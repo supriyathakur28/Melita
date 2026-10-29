@@ -1,0 +1,21 @@
+# The stub stands in for an external system, so it has its own configuration and does not use the
+# Config Server.
+server:
+  port: 8084
+
+spring:
+  application:
+    name: fulfilment-stub
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/melita
+          jwk-set-uri: ${KEYCLOAK_INTERNAL_URL:http://localhost:8180}/realms/melita/protocol/openid-connect/certs
+          audiences: fulfilment-api
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
