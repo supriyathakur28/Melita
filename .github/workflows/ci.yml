@@ -32,3 +32,45 @@ jobs:
         with:
           name: test-reports
           path: '**/target/*-reports/'
+
+  e2e:
+    name: Postman collection against the full stack
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Config Server serves configuration from this exact commit.
+      CONFIG_GIT_LABEL: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Config Server clones this repository, so it needs real history
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Package services
+        run: ./mvnw -B -DskipTests package
+
+      - name: Start the stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --build --wait --wait-timeout 600
+
+      - name: Run Postman collection (Newman)
+        run: >
+          npx --yes newman@6 run postman/melita-orders.postman_collection.json
+          -e postman/local.postman_environment.json --reporters cli,junit
+          --reporter-junit-export target/newman/results.xml
+
+      - name: Service logs
+        if: failure()
+        run: docker compose logs --no-color > compose-logs.txt; tail -n 300 compose-logs.txt
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
+

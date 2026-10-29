@@ -1,0 +1,1385 @@
+{
+  "info": {
+    "_postman_id": "c889386d-2118-5c6d-8e5d-3f8975c52cbb",
+    "name": "Melita Order Platform",
+    "description": "Black-box integration tests against the running stack (docker compose). Run in order: folders build on each other. `newman run postman/melita-orders.postman_collection.json -e postman/local.postman_environment.json`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Tokens (Keycloak)",
+      "description": "Real tokens from the local Keycloak realm.",
+      "item": [
+        {
+          "name": "Partner token (erp-partner, client credentials)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/melita/protocol/openid-connect/token",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "erp-partner"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{erpPartnerSecret}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('token issued', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('partnerToken', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Second partner token (other-partner)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/melita/protocol/openid-connect/token",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "other-partner"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{otherPartnerSecret}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('token issued', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('otherPartnerToken', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agent token (agent1, local realm only)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/melita/protocol/openid-connect/token",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "agent-console"
+                },
+                {
+                  "key": "username",
+                  "value": "agent1"
+                },
+                {
+                  "key": "password",
+                  "value": "{{agentPassword}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('token issued', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('agentToken', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Supervisor token (supervisor1, local realm only)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/melita/protocol/openid-connect/token",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "agent-console"
+                },
+                {
+                  "key": "username",
+                  "value": "supervisor1"
+                },
+                {
+                  "key": "password",
+                  "value": "{{supervisorPassword}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('token issued', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('supervisorToken', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Catalogue",
+      "description": "",
+      "item": [
+        {
+          "name": "Catalogue without a token is 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{intakeUrl}}/api/v1/catalogue/products",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401 problem', () => { pm.response.to.have.status(401); pm.expect(pm.response.json().code).to.eql('UNAUTHORIZED'); });",
+                  "pm.test('bearer challenge', () => pm.expect(pm.response.headers.get('WWW-Authenticate')).to.include('Bearer'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List products and packages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{intakeUrl}}/api/v1/catalogue/products",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const codes = pm.response.json().map(p => p.code);",
+                  "pm.test('four products', () => pm.expect(codes).to.have.members(['INTERNET', 'MOBILE', 'TELEPHONY', 'TV']));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Place orders (public API)",
+      "description": "",
+      "item": [
+        {
+          "name": "Place an order (no approval needed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              },
+              {
+                "key": "X-Request-Id",
+                "value": "postman-{{idempotencyKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{reference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"INTERNET\",\n      \"packageCode\": \"INTERNET_250MBPS\"\n    },\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_PREPAID\"\n    }\n  ],\n  \"installation\": {\n    \"useCustomerAddress\": true,\n    \"preferredDate\": \"{{installationDate}}\",\n    \"timeSlot\": \"MORNING\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A Monday about two weeks out: always a valid installation day.",
+                  "const date = new Date();",
+                  "date.setDate(date.getDate() + 14);",
+                  "while (date.getDay() !== 1) { date.setDate(date.getDate() + 1); }",
+                  "pm.collectionVariables.set('installationDate', date.toISOString().substring(0, 10));",
+                  "",
+                  "pm.collectionVariables.set('reference', 'PM-' + Date.now() + '-' + Math.floor(Math.random() * 1000));",
+                  "pm.collectionVariables.set('idempotencyKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('Location header', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/v1/orders/'));",
+                  "pm.test('request ID echoed', () => pm.expect(pm.response.headers.get('X-Request-Id')).to.include('postman-'));",
+                  "const body = pm.response.json();",
+                  "pm.test('accepted', () => pm.expect(body.status).to.eql('ACCEPTED'));",
+                  "pm.collectionVariables.set('orderId', body.orderId);",
+                  "pm.collectionVariables.set('firstResponse', pm.response.text());"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retry with the same key and body replays the response",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{reference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"INTERNET\",\n      \"packageCode\": \"INTERNET_250MBPS\"\n    },\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_PREPAID\"\n    }\n  ],\n  \"installation\": {\n    \"useCustomerAddress\": true,\n    \"preferredDate\": \"{{installationDate}}\",\n    \"timeSlot\": \"MORNING\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('same 201', () => pm.response.to.have.status(201));",
+                  "pm.test('marked as a replay', () => pm.expect(pm.response.headers.get('Idempotent-Replayed')).to.eql('true'));",
+                  "pm.test('same order', () => pm.expect(pm.response.json().orderId).to.eql(pm.collectionVariables.get('orderId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same key with a different body is 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{reference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_PREPAID\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422', () => pm.response.to.have.status(422));",
+                  "pm.test('key reused', () => pm.expect(pm.response.json().code).to.eql('IDEMPOTENCY_KEY_REUSED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Same reference with a new key is 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{reference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"INTERNET\",\n      \"packageCode\": \"INTERNET_250MBPS\"\n    },\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_PREPAID\"\n    }\n  ],\n  \"installation\": {\n    \"useCustomerAddress\": true,\n    \"preferredDate\": \"{{installationDate}}\",\n    \"timeSlot\": \"MORNING\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test('duplicate reference', () => pm.expect(body.code).to.eql('DUPLICATE_EXTERNAL_REFERENCE'));",
+                  "pm.test('points at the existing order', () => pm.expect(body.existingOrderId).to.eql(pm.collectionVariables.get('orderId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read your own order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{intakeUrl}}/api/v1/orders/{{orderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('receipt', () => pm.expect(pm.response.json().externalReference).to.eql(pm.collectionVariables.get('reference')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Another partner cannot see it (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{intakeUrl}}/api/v1/orders/{{orderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherPartnerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404, existence not revealed', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid fields are 400 with every field error",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{reference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria1\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"not-an-email\",\n    \"mobileNumber\": \"79123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"12345\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"INTERNET\",\n      \"packageCode\": \"INTERNET_250MBPS\"\n    },\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_PREPAID\"\n    }\n  ],\n  \"installation\": {\n    \"useCustomerAddress\": true,\n    \"preferredDate\": \"{{installationDate}}\",\n    \"timeSlot\": \"MORNING\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "const fields = pm.response.json().errors.map(e => e.field);",
+                  "pm.test('all invalid fields reported', () => pm.expect(fields).to.include.members(",
+                  "    ['customer.firstName', 'customer.email', 'customer.mobileNumber', 'customer.address.postcode']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Business rules are 422 with every violation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{reference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"INTERNET\",\n      \"packageCode\": \"INTERNET_10GBPS\"\n    },\n    {\n      \"product\": \"TV\",\n      \"packageCode\": \"TV_140_CHANNELS\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('422', () => pm.response.to.have.status(422));",
+                  "const codes = pm.response.json().errors.map(e => e.code);",
+                  "pm.test('unknown package and missing installation', () => pm.expect(codes).to.include.members(['UNKNOWN_PACKAGE', 'INSTALLATION_REQUIRED']));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing Idempotency-Key is 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{reference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"INTERNET\",\n      \"packageCode\": \"INTERNET_250MBPS\"\n    },\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_PREPAID\"\n    }\n  ],\n  \"installation\": {\n    \"useCustomerAddress\": true,\n    \"preferredDate\": \"{{installationDate}}\",\n    \"timeSlot\": \"MORNING\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('code', () => pm.expect(pm.response.json().code).to.eql('IDEMPOTENCY_KEY_INVALID'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An agent token is rejected by the public API (wrong audience)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{intakeUrl}}/api/v1/catalogue/products",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order reaches Fulfilment (SUBMITTED)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/orders/{{orderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Processing is asynchronous (outbox -> RabbitMQ -> consumer -> scheduler), so poll for up to 30 s.",
+                  "const attempt = Number(pm.collectionVariables.get('pollAttempt') || 0);",
+                  "const status = pm.response.code === 200 ? pm.response.json().status : 'not yet received';",
+                  "if (status !== 'SUBMITTED' && attempt < 30) {",
+                  "    pm.collectionVariables.set('pollAttempt', attempt + 1);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "    pm.collectionVariables.set('pollAttempt', 0);",
+                  "    pm.test('order reaches SUBMITTED', () => pm.expect(status).to.eql('SUBMITTED'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agents were emailed about the new order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{mailpitUrl}}/api/v1/search?query=subject:%22New order {{reference}}%22",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const attempt = Number(pm.collectionVariables.get('pollAttempt') || 0);",
+                  "const total = pm.response.code === 200 ? pm.response.json().messages_count : 0;",
+                  "if (total < 1 && attempt < 20) {",
+                  "    pm.collectionVariables.set('pollAttempt', attempt + 1);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "    pm.collectionVariables.set('pollAttempt', 0);",
+                  "    pm.test('email received by the agents mailbox', () => pm.expect(total).to.be.at.least(1));",
+                  "    const message = pm.response.json().messages[0];",
+                  "    pm.test('sent to the agents mailbox', () => pm.expect(message.To[0].Address).to.eql('agents@melita.example'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Approval (private API)",
+      "description": "",
+      "item": [
+        {
+          "name": "Place an order that needs approval (Mobile post-paid)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{heldKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{heldReference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_POSTPAID\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('heldReference', 'PM-' + Date.now() + '-' + Math.floor(Math.random() * 1000));",
+                  "pm.collectionVariables.set('heldKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('heldOrderId', pm.response.json().orderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order is held for approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Processing is asynchronous (outbox -> RabbitMQ -> consumer -> scheduler), so poll for up to 30 s.",
+                  "const attempt = Number(pm.collectionVariables.get('pollAttempt') || 0);",
+                  "const status = pm.response.code === 200 ? pm.response.json().status : 'not yet received';",
+                  "if (status !== 'PENDING_APPROVAL' && attempt < 30) {",
+                  "    pm.collectionVariables.set('pollAttempt', attempt + 1);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "    pm.collectionVariables.set('pollAttempt', 0);",
+                  "    pm.test('order reaches PENDING_APPROVAL', () => pm.expect(status).to.eql('PENDING_APPROVAL'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A partner token cannot use the private API (wrong audience)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agents list orders waiting for approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/orders?status=PENDING_APPROVAL&size=100&sort=receivedAt,desc",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const ids = pm.response.json().content.map(o => o.orderId);",
+                  "pm.test('the held order is listed', () => pm.expect(ids).to.include(pm.collectionVariables.get('heldOrderId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order detail masks the ID number",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('masked', () => pm.expect(body.customer.idDocumentNumberMasked).to.eql('****56M'));",
+                  "pm.test('no clear ID number anywhere', () => pm.expect(pm.response.text()).to.not.include('123456M'));",
+                  "pm.test('reason shown', () => pm.expect(body.approvalReasons).to.include('PACKAGE:MOBILE_POSTPAID'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agents were emailed that approval is needed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{mailpitUrl}}/api/v1/search?query=subject:%22Approval needed: order {{heldReference}}%22",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const attempt = Number(pm.collectionVariables.get('pollAttempt') || 0);",
+                  "const total = pm.response.code === 200 ? pm.response.json().messages_count : 0;",
+                  "if (total < 1 && attempt < 20) {",
+                  "    pm.collectionVariables.set('pollAttempt', attempt + 1);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "    pm.collectionVariables.set('pollAttempt', 0);",
+                  "    pm.test('email received by the agents mailbox', () => pm.expect(total).to.be.at.least(1));",
+                  "    const message = pm.response.json().messages[0];",
+                  "    pm.test('sent to the agents mailbox', () => pm.expect(message.To[0].Address).to.eql('agents@melita.example'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve the order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}/approve",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Customer identity checked\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('decided by the agent from the token', () => pm.expect(pm.response.json().decision.decidedBy).to.eql('agent1'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deciding again is 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}/reject",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Changed my mind about this one\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));",
+                  "pm.test('invalid transition', () => pm.expect(pm.response.json().code).to.eql('INVALID_STATE_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approved order reaches Fulfilment (SUBMITTED)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Processing is asynchronous (outbox -> RabbitMQ -> consumer -> scheduler), so poll for up to 30 s.",
+                  "const attempt = Number(pm.collectionVariables.get('pollAttempt') || 0);",
+                  "const status = pm.response.code === 200 ? pm.response.json().status : 'not yet received';",
+                  "if (status !== 'SUBMITTED' && attempt < 30) {",
+                  "    pm.collectionVariables.set('pollAttempt', attempt + 1);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "    pm.collectionVariables.set('pollAttempt', 0);",
+                  "    pm.test('order reaches SUBMITTED', () => pm.expect(status).to.eql('SUBMITTED'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Rejection",
+      "description": "",
+      "item": [
+        {
+          "name": "Place another order that needs approval",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{rejectKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{intakeUrl}}/api/v1/orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalReference\": \"{{rejectReference}}\",\n  \"customer\": {\n    \"firstName\": \"Maria\",\n    \"lastName\": \"Borg\",\n    \"dateOfBirth\": \"1990-04-12\",\n    \"email\": \"maria.borg@example.com\",\n    \"mobileNumber\": \"+35679123456\",\n    \"identityDocument\": {\n      \"type\": \"ID_CARD\",\n      \"number\": \"123456M\"\n    },\n    \"address\": {\n      \"line1\": \"12, Triq il-Kbira\",\n      \"locality\": \"Mosta\",\n      \"postcode\": \"MST 1234\"\n    }\n  },\n  \"items\": [\n    {\n      \"product\": \"MOBILE\",\n      \"packageCode\": \"MOBILE_POSTPAID\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('rejectReference', 'PM-' + Date.now() + '-' + Math.floor(Math.random() * 1000));",
+                  "pm.collectionVariables.set('rejectKey', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('rejectOrderId', pm.response.json().orderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Second order is held for approval",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/orders/{{rejectOrderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Processing is asynchronous (outbox -> RabbitMQ -> consumer -> scheduler), so poll for up to 30 s.",
+                  "const attempt = Number(pm.collectionVariables.get('pollAttempt') || 0);",
+                  "const status = pm.response.code === 200 ? pm.response.json().status : 'not yet received';",
+                  "if (status !== 'PENDING_APPROVAL' && attempt < 30) {",
+                  "    pm.collectionVariables.set('pollAttempt', attempt + 1);",
+                  "    postman.setNextRequest(pm.info.requestName);",
+                  "    setTimeout(() => {}, 1000);",
+                  "} else {",
+                  "    pm.collectionVariables.set('pollAttempt', 0);",
+                  "    pm.test('order reaches PENDING_APPROVAL', () => pm.expect(status).to.eql('PENDING_APPROVAL'));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A rejection needs a meaningful reason (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{managementUrl}}/api/v1/orders/{{rejectOrderId}}/reject",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"no\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject the order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{managementUrl}}/api/v1/orders/{{rejectOrderId}}/reject",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Customer failed the credit check\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('rejected', () => pm.expect(pm.response.json().status).to.eql('REJECTED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Roles",
+      "description": "",
+      "item": [
+        {
+          "name": "Agents cannot read the approval policy (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/approval-policy",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Supervisors can",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{managementUrl}}/api/v1/approval-policy",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{supervisorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('policy from Config Server', () => pm.expect(pm.response.json().requiredPackages).to.include('MOBILE_POSTPAID'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "partnerToken",
+      "value": ""
+    },
+    {
+      "key": "otherPartnerToken",
+      "value": ""
+    },
+    {
+      "key": "agentToken",
+      "value": ""
+    },
+    {
+      "key": "supervisorToken",
+      "value": ""
+    },
+    {
+      "key": "reference",
+      "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "installationDate",
+      "value": ""
+    },
+    {
+      "key": "heldReference",
+      "value": ""
+    },
+    {
+      "key": "heldKey",
+      "value": ""
+    },
+    {
+      "key": "heldOrderId",
+      "value": ""
+    },
+    {
+      "key": "rejectReference",
+      "value": ""
+    },
+    {
+      "key": "rejectKey",
+      "value": ""
+    },
+    {
+      "key": "rejectOrderId",
+      "value": ""
+    },
+    {
+      "key": "pollAttempt",
+      "value": ""
+    },
+    {
+      "key": "firstResponse",
+      "value": ""
+    }
+  ]
+}
