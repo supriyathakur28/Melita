@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body style="font-family: Arial, sans-serif">
+<h2>Fulfilment failed: order <span th:text="${order.externalReference}">ERP-1</span></h2>
+<p>Order <code th:text="${order.orderId}">id</code> could not be submitted to Fulfilment after
+   <span th:text="${order.attempts}">5</span> attempt(s).</p>
+<p>Last error: <code th:text="${order.lastError}">HTTP 422</code></p>
+<p>The order needs manual follow-up.</p>
+</body>
+</html>

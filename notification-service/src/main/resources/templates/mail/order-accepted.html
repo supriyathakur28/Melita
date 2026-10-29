@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body style="font-family: Arial, sans-serif">
+<h2>New order <span th:text="${order.externalReference}">ERP-1</span></h2>
+<p>Partner <strong th:text="${order.partnerId}">erp-partner</strong> placed an order.
+   Order ID: <code th:text="${order.orderId}">id</code></p>
+<h3>Customer</h3>
+<p>
+  <span th:text="${order.customer.firstName + ' ' + order.customer.lastName}">Maria Borg</span><br>
+  <span th:text="${order.customer.email}">email</span>, <span th:text="${order.customer.mobileNumber}">mobile</span><br>
+  <span th:text="${order.customer.identityDocument.type}">ID_CARD</span>
+  <span th:text="${maskedIdNumber}">****56M</span>
+</p>
+<h3>Products</h3>
+<ul>
+  <li th:each="item : ${order.items}" th:text="${item.packageName}">Internet 1Gbps</li>
+</ul>
+<div th:if="${order.installation != null}">
+  <h3>Installation</h3>
+  <p>Preferred: <span th:text="${order.installation.preferredDate}">date</span>,
+     <span th:text="${order.installation.timeSlot}">MORNING</span><br>
+     <span th:text="${order.installation.address.line1}">line1</span>,
+     <span th:text="${order.installation.address.locality}">locality</span>
+     <span th:text="${order.installation.address.postcode}">postcode</span></p>
+</div>
+</body>
+</html>

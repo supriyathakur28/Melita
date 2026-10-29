@@ -24,6 +24,7 @@
         <module>order-intake-service</module>
         <module>fulfilment-stub</module>
         <module>order-management-service</module>
+        <module>notification-service</module>
     </modules>
 
     <properties>

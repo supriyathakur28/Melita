@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body style="font-family: Arial, sans-serif">
+<h2>Approval needed: order <span th:text="${order.externalReference}">ERP-1</span></h2>
+<p>Order <code th:text="${order.orderId}">id</code> is waiting for an agent's decision.</p>
+<p>Why it is held:</p>
+<ul>
+  <li th:each="reason : ${order.approvalReasons}" th:text="${reason}">PACKAGE:MOBILE_POSTPAID</li>
+</ul>
+<p>Products:</p>
+<ul>
+  <li th:each="item : ${order.items}" th:text="${item.packageName}">Mobile post-paid</li>
+</ul>
+<p>Review it in the Approval API: <code th:text="'GET /api/v1/orders/' + ${order.orderId}">GET</code></p>
+</body>
+</html>
