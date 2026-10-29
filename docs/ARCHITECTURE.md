@@ -151,8 +151,9 @@ They let a reviewer see every event arrive in the RabbitMQ UI.
   boundaries are drawn where a split pays off: different exposure (public vs private), different failure
   domains (SMTP), different owners of state.
 
-**Config Server availability:** services fetch configuration at startup (fail-fast with retry) and keep
-it in memory, so an outage blocks only new instances from starting.
+**Config Server availability:** services fetch configuration at startup and keep it in memory, so an outage
+blocks only new instances from starting. They fail fast if the Config Server is unreachable; compose start-up
+ordering (and a restart policy in production) brings them up once it is.
 
 ### 4.4 Repository layout
 
@@ -229,6 +230,9 @@ sequenceDiagram
 - The `201` is sent only after the commit, so an acknowledged order always has its event in the outbox.
 - A message whose confirm does not arrive stays unpublished and is sent again on the next tick.
   Consumers are idempotent, so the rare duplicate is harmless.
+- An event the broker accepts but no queue receives (nobody has bound that routing key yet) is still marked
+  published, with a warning. Retrying it forever would eventually fill the relay's batch and block every
+  other event.
 
 ### 5.2 Process order
 
@@ -245,7 +249,7 @@ sequenceDiagram
 
     par notification queue
         MQ->>NS: order.accepted
-        NS->>NS: INSERT notification PENDING (duplicate → skip)
+        NS->>NS: claim notification row (PENDING → SENDING with a lease, already SENT → skip)
         NS->>SMTP: "New order" email to agents' mailbox
         NS->>NS: mark SENT
     and order-management queue
@@ -284,9 +288,14 @@ sequenceDiagram
     end
 ```
 
-- **Unknown outcome.** On a timeout the order is retried with the same `Idempotency-Key`. If the first
-  call did reach Fulfilment, the retry gets the same `fulfilmentReference` back instead of creating a
-  second order.
+- **Unknown outcome.** On a timeout, or a 2xx whose body cannot be read, the order is retried with the same
+  `Idempotency-Key`. If the first call did reach Fulfilment, the retry gets the same `fulfilmentReference`
+  back instead of creating a second order.
+  - The request body must not change between attempts, so `preferredSlotExpired` is decided at the first
+    attempt and stored.
+- **One bad order cannot block the others.** An unexpected error while submitting one order is recorded as a
+  failed attempt with backoff. The order moves back in the queue and eventually fails, instead of being
+  retried first on every tick.
 - **Circuit breaker.** While the breaker is open, calls fail fast and the order is left untouched, so an
   outage does not use up retry attempts.
 
@@ -519,9 +528,17 @@ easy to exercise from tests and Postman.
 Messages in a DLQ are inspected and moved back with the RabbitMQ management UI (runbook in the README).
 
 **Email** is a notification, never the source of truth. An order awaiting approval is always visible in
-the Approval API, whether or not its email arrived. A known edge case: if notification crashes after the
-SMTP send but before marking the row `SENT`, the email is sent again on redelivery. This is accepted,
-since email is at-least-once by nature.
+the Approval API, whether or not its email arrived.
+
+Only one consumer can claim an email: a conditional update moves the row from `PENDING` (or `FAILED`) to
+`SENDING` with a 2-minute lease. If two copies of the same event arrive at once, the second claim fails and
+that copy is skipped. A failed send releases the row for the listener's retry.
+
+A known edge case: if notification crashes after the SMTP send but before marking the row `SENT`, the lease
+expires and a redelivery sends the email again. This is accepted, since email is at-least-once by nature.
+
+Dead-lettering logs only the message ID and type, never the body: an `order.accepted` body contains personal
+data. (Spring's stock `RejectAndDontRequeueRecoverer` logs the whole message, so it is not used.)
 
 ## 10. Data design
 
@@ -536,6 +553,8 @@ since email is at-least-once by nature.
 - `InnoDB`, `utf8mb4_unicode_ci`.
 - IDs are UUIDs stored as `CHAR(36)`: generated in the application, readable in SQL and logs, and the
   same `orderId` is used across services.
+- Identifiers that clients send (partner IDs, external references, idempotency keys) use binary collation:
+  they are compared exactly, including case.
 - Timestamps are `DATETIME(6)` in UTC, not `TIMESTAMP`, which ends in 2038.
 - Enums are `VARCHAR` plus a `CHECK` constraint, so adding a value is a cheap migration.
 - Flyway migrations are forward-only.
@@ -563,12 +582,12 @@ since email is at-least-once by nature.
 
 | Table | Key columns and constraints | Indexes |
 |---|---|---|
-| `customer_order` | `id` PK (= intake orderId), `partner_id`, `external_reference`, `status` (CHECK), embedded customer and address, installation (nullable), `id_document_number` (**encrypted**), `approval_reasons` (comma-separated codes), `decided_by`, `decided_at`, `decision_note`, `fulfilment_reference`, `attempts`, `next_attempt_at`, `last_error`, `version`, `received_at`, `updated_at` | `(status, received_at)` for the pending list; `(status, next_attempt_at)` for the submitter |
+| `customer_order` | `id` PK (= intake orderId), `partner_id`, `external_reference`, `status` (CHECK), embedded customer and address, installation (nullable), `preferred_slot_expired` (fixed at the first submission), `id_document_number` (**encrypted**), `approval_reasons` (comma-separated codes), `decided_by`, `decided_at`, `decision_note`, `fulfilment_reference`, `attempts`, `next_attempt_at`, `last_error`, `version`, `received_at`, `updated_at` | `(status, received_at)` for the pending list; `(status, next_attempt_at)` for the submitter |
 | `order_item` | `id` PK, `order_id` FK, `product_code`, `package_code`, `package_name`; UNIQUE(`order_id`, `product_code`) | FK |
 | `order_status_history` | `id` PK, `order_id` FK, `from_status`, `to_status`, `actor`, `reason`, `occurred_at` | `(order_id, occurred_at)` |
 | `processed_message` | **PK(`message_id`)**, `processed_at` | — |
 | `outbox_event` | as in intake | as in intake |
-| `notification` *(notification DB)* | `id` PK, `event_id`, `template`, `order_id`, `recipient`, `status` (`PENDING`/`SENT`/`FAILED`), `attempts`, `last_error`, `created_at`, `sent_at`; **UNIQUE(`event_id`, `template`)** | the unique key is the dedupe |
+| `notification` *(notification DB)* | `id` PK, `event_id`, `template`, `order_id`, `recipient`, `status` (`PENDING`/`SENDING`/`SENT`/`FAILED`), `claimed_until` (lease), `attempts`, `last_error`, `created_at`, `sent_at`; **UNIQUE(`event_id`, `template`)** | the unique key is the dedupe |
 
 - **ID document number:** encrypted with AES-256-GCM by a JPA `AttributeConverter`, with the key from the
   environment. Stored as `v1:<base64>`; the prefix leaves room for key rotation. It is masked (`****56M`)
@@ -585,7 +604,7 @@ since email is at-least-once by nature.
 |---|---|---|
 | Same `Idempotency-Key` sent twice in parallel | One order; the second request gets the first response | The second insert waits on the unique key, fails, and is re-read and replayed |
 | Two agents decide the same order at once | One wins; the other gets 409 | The decision reads the order with `SELECT … FOR UPDATE`; the second waits, then the state machine rejects it. `@Version` stays as a safety net. Without the row lock, MySQL deadlocks: each status-history insert takes a shared lock on the order row (foreign key check) before each update needs an exclusive one |
-| Same event delivered twice | One order, one email | Inbox primary key; `notification` unique key |
+| Same event delivered twice | One order, one email | Inbox primary key; `notification` unique key plus an atomic lease claim, so two copies processed at once send one email |
 | Submitter finishes after an agent changed the order | Agents cannot change a READY order; the submitter's update also locks the row and is guarded by `@Version` | Row lock + optimistic locking |
 
 **Scheduled jobs run on one instance at a time.** The outbox relay and the Fulfilment submitter run on
@@ -670,8 +689,9 @@ catalogue is read from MySQL.
   - It serves committed changes only, from the label `CONFIG_GIT_LABEL` (default `main`; CI uses the commit
     under test).
 - Files: `application.yml` (shared), `<service>.yml`, and `<service>-docker.yml` (container host names).
-- Each service has only `spring.application.name` and `spring.config.import=configserver:…` locally, with
-  fail-fast and retry. Config Server access uses HTTP Basic credentials from the environment.
+- Each service has only `spring.application.name` and `spring.config.import=configserver:…` locally, and
+  fails fast if the Config Server is unreachable. Config Server access uses HTTP Basic credentials from the
+  environment.
 - Typed `@ConfigurationProperties` records with `@Validated`, so bad config fails at startup.
 - Secrets are `${ENV_VAR}` placeholders resolved from the environment (`.env`, never committed).
 - Tests run without Config Server (`spring.cloud.config.enabled=false`).
