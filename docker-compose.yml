@@ -1,5 +1,6 @@
-# Local stack. `docker compose up -d` starts the infrastructure and every service.
-# Credentials come from .env (copy .env.example). Only the APIs and the developer UIs are published.
+# Local stack: infrastructure plus every service.
+#   cp .env.example .env && ./mvnw -DskipTests package && docker compose up -d --build --wait
+# Credentials come from .env. Only the two APIs and the developer UIs are published on the host.
 
 name: melita-orders
 
@@ -94,6 +95,123 @@ services:
       - "8025:8025"   # web UI and API
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  config-server:
+    build:
+      context: .
+      args:
+        MODULE: config-server
+    environment:
+      CONFIG_GIT_URI: /repo
+      # Branch, tag or commit to serve configuration from (CI passes the commit under test).
+      CONFIG_GIT_LABEL: ${CONFIG_GIT_LABEL:-main}
+      CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
+    volumes:
+      # The Config Server reads committed configuration from this repository's git history.
+      - .:/repo:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8888/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  order-intake-service:
+    build:
+      context: .
+      args:
+        MODULE: order-intake-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
+      ORDER_INTAKE_DB_PASSWORD: ${ORDER_INTAKE_DB_PASSWORD}
+      ORDER_INTAKE_RABBITMQ_PASSWORD: ${ORDER_INTAKE_RABBITMQ_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "8081:8081"   # public Order Taking API
+    depends_on: &service-dependencies
+      config-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      rabbitmq-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/actuator/health/readiness"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  order-management-service:
+    build:
+      context: .
+      args:
+        MODULE: order-management-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
+      ORDER_MANAGEMENT_DB_PASSWORD: ${ORDER_MANAGEMENT_DB_PASSWORD}
+      ORDER_MANAGEMENT_RABBITMQ_PASSWORD: ${ORDER_MANAGEMENT_RABBITMQ_PASSWORD}
+      ORDER_MANAGEMENT_CLIENT_SECRET: ${ORDER_MANAGEMENT_CLIENT_SECRET}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
+    ports:
+      - "8082:8082"   # private Order Approval API (internal network only in production)
+    depends_on:
+      <<: *service-dependencies
+      fulfilment-stub:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8082/actuator/health/readiness"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  notification-service:
+    build:
+      context: .
+      args:
+        MODULE: notification-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      CONFIG_SERVER_URL: http://config-server:8888
+      CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+      NOTIFICATION_RABBITMQ_PASSWORD: ${NOTIFICATION_RABBITMQ_PASSWORD}
+    depends_on:
+      config-server:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      rabbitmq-setup:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8083/actuator/health/readiness"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  fulfilment-stub:
+    build:
+      context: .
+      args:
+        MODULE: fulfilment-stub
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8180
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8084/actuator/health"]
       interval: 5s
       timeout: 5s
       retries: 30
