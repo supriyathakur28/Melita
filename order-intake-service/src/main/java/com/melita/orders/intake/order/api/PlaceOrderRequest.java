@@ -61,12 +61,20 @@ public record PlaceOrderRequest(
             String postcode) {
     }
 
+    /**
+     * {@code useCustomerAddress} may be omitted: then the customer's address is used unless an {@code address}
+     * is given.
+     */
     @ValidInstallationAddress
     public record InstallationRequest(
-            boolean useCustomerAddress,
+            Boolean useCustomerAddress,
             @Valid AddressRequest address,
             @NotNull LocalDate preferredDate,
             @NotNull TimeSlot timeSlot) {
+
+        public boolean usesCustomerAddress() {
+            return useCustomerAddress == null ? address == null : useCustomerAddress;
+        }
     }
 
     public enum TimeSlot { MORNING, AFTERNOON, EVENING }

@@ -209,6 +209,15 @@ class OrderIntakeIT extends IntakeIntegrationTest {
     }
 
     @Test
+    void idempotencyKeysAreCaseSensitive() throws Exception {
+        String key = "CaseKey-" + UUID.randomUUID().toString().substring(0, 8);
+        place("erp-partner", key, TestOrders.mobileOnly(uniqueReference()));
+
+        assertThat(place("erp-partner", key.toLowerCase(), TestOrders.mobileOnly(uniqueReference()))
+                .getResponse().getStatus()).isEqualTo(201);
+    }
+
+    @Test
     void theSameReferenceIsFineForAnotherPartner() throws Exception {
         String reference = uniqueReference();
         place("erp-partner", uniqueKey(), TestOrders.mobileOnly(reference));

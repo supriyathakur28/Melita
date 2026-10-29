@@ -26,7 +26,7 @@ final class OrderAcceptedMapper {
         if (request.installation() != null) {
             PlaceOrderRequest.InstallationRequest i = request.installation();
             installation = new OrderAccepted.Installation(
-                    i.useCustomerAddress() ? customerAddress : address(i.address()),
+                    i.usesCustomerAddress() ? customerAddress : address(i.address()),
                     i.preferredDate(), i.timeSlot().name());
         }
 

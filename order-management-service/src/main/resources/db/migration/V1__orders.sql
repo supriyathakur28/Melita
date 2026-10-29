@@ -2,8 +2,8 @@
 
 create table customer_order (
     id                         char(36) character set ascii collate ascii_bin not null primary key,
-    partner_id                 varchar(64)  not null,
-    external_reference         varchar(64)  not null,
+    partner_id                 varchar(64)  collate utf8mb4_bin not null,
+    external_reference         varchar(64)  collate utf8mb4_bin not null,
     status                     varchar(32)  not null,
     customer_first_name        varchar(100) not null,
     customer_last_name         varchar(100) not null,
@@ -22,6 +22,8 @@ create table customer_order (
     installation_address_line2    varchar(100),
     installation_address_locality varchar(100),
     installation_address_postcode varchar(8),
+    -- Decided once, at the first submission attempt, so every retry sends the same body to Fulfilment.
+    preferred_slot_expired     boolean,
     approval_required          boolean      not null,
     approval_reasons           varchar(500),
     decided_by                 varchar(100),

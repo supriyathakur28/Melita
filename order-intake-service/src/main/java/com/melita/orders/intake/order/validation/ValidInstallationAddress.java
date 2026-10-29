@@ -11,7 +11,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** {@code address} is required exactly when {@code useCustomerAddress} is false. */
+/** {@code address} is required exactly when the customer's address is not used. */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = ValidInstallationAddress.Validator.class)
@@ -29,7 +29,7 @@ public @interface ValidInstallationAddress {
             if (installation == null) {
                 return true;
             }
-            boolean valid = installation.useCustomerAddress() == (installation.address() == null);
+            boolean valid = installation.usesCustomerAddress() == (installation.address() == null);
             if (!valid) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(context.getDefaultConstraintMessageTemplate())

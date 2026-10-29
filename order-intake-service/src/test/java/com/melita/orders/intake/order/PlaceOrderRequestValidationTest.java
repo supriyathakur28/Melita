@@ -92,6 +92,18 @@ class PlaceOrderRequestValidationTest {
     }
 
     @Test
+    void omittedUseCustomerAddressFollowsWhetherAnAddressIsGiven() {
+        LocalDate date = LocalDate.of(2026, 11, 9);
+        var withoutAddress = new InstallationRequest(null, null, date, TimeSlot.MORNING);
+        var withAddress = new InstallationRequest(null, TestOrders.address(), date, TimeSlot.MORNING);
+
+        assertThat(invalidFields(withoutAddress)).isEmpty();
+        assertThat(withoutAddress.usesCustomerAddress()).isTrue();
+        assertThat(invalidFields(withAddress)).isEmpty();
+        assertThat(withAddress.usesCustomerAddress()).isFalse();
+    }
+
+    @Test
     void productsMayNotRepeatAndAtMostFourItems() {
         var duplicate = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of(
                 new ItemRequest(Product.MOBILE, "MOBILE_PREPAID"), new ItemRequest(Product.MOBILE, "MOBILE_POSTPAID")));
