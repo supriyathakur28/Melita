@@ -21,6 +21,7 @@
         <module>order-events-contract</module>
         <module>platform-common</module>
         <module>config-server</module>
+        <module>order-intake-service</module>
     </modules>
 
     <properties>

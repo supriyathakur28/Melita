@@ -1,0 +1,38 @@
+# Tests run without the Config Server; this file replaces src/main/resources/application.yml.
+spring:
+  application:
+    name: order-intake-service
+  cloud:
+    config:
+      enabled: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
+  data:
+    redis:
+      timeout: 200ms
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/melita
+          jwk-set-uri: http://localhost:1/certs
+          audiences: order-intake-api
+
+outbox:
+  relay:
+    interval-ms: 100
+
+installation:
+  min-lead-working-days: 2
+  max-horizon-days: 60
+  excluded-days: [SUNDAY]
+  zone: Europe/Malta
