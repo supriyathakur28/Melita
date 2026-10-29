@@ -25,8 +25,10 @@ import java.util.concurrent.TimeUnit;
  * <ul>
  *   <li>Runs on one instance at a time ({@link NamedLock}).</li>
  *   <li>No database transaction is open while talking to the broker.</li>
- *   <li>A row is marked published only after the broker confirms it and it was routed to a queue. Its payload
- *       is cleared at the same time, so personal data does not linger in the outbox.</li>
+ *   <li>A row is marked published only after the broker confirms it. Its payload is cleared at the same time,
+ *       so personal data does not linger in the outbox. An event that no queue receives (e.g. nobody has
+ *       bound {@code order.submitted} yet) is still published: it is logged as a warning, not retried forever,
+ *       which would eventually block the relay.</li>
  *   <li>A row whose confirm does not arrive is retried on the next run. That can produce a duplicate, which
  *       consumers absorb because they are idempotent.</li>
  * </ul>
@@ -124,8 +126,8 @@ public class OutboxRelay {
                 return false;
             }
             if (sent.correlation().getReturned() != null) {
-                log.error("Event {} ({}) was not routed to any queue", sent.row().eventId(), sent.row().routingKey());
-                return false;
+                log.warn("Event {} ({}) was accepted but no queue is bound for it", sent.row().eventId(),
+                        sent.row().routingKey());
             }
             return true;
         } catch (InterruptedException e) {

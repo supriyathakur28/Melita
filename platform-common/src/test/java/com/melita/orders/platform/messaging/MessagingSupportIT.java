@@ -4,6 +4,9 @@ import com.melita.orders.events.EventEnvelope;
 import com.melita.orders.events.OrderEvents;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
@@ -99,12 +102,12 @@ class MessagingSupportIT {
     }
 
     @Test
-    void unroutableEventStaysUnpublishedAndIsRetriedLater() {
+    void eventThatNoQueueReceivesIsStillMarkedPublishedSoItCannotBlockTheRelay() {
         tx.executeWithoutResult(status -> outboxWriter.append(
                 EventEnvelope.of("nobody.listens", "req-x", Instant.now(), Map.of())));
 
-        assertThat(outboxRelay.publishPending()).isZero();
-        assertThat(outboxRelay.pendingCount()).isEqualTo(1);
+        assertThat(outboxRelay.publishPending()).isEqualTo(1);
+        assertThat(outboxRelay.pendingCount()).isZero();
     }
 
     @Test
@@ -170,6 +173,18 @@ class MessagingSupportIT {
         assertThat(dead).isNotNull();
         assertThat(listener.invocations.get("always-fail").get()).isEqualTo(3);
         assertThat(failureCallback.deadLettered).contains("always-fail");
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void deadLetteringNeverLogsTheMessageBody(CapturedOutput output) {
+        Message message = MessageBuilder.withBody("always-fail PII-MARKER-123456M".getBytes(StandardCharsets.UTF_8))
+                .setMessageId("msg-pii-test").setContentType("application/json").build();
+        rabbitTemplate.send(OrderEvents.EXCHANGE, MessagingTestApplication.LISTENER_ROUTING_KEY, message);
+
+        Message dead = rabbitTemplate.receive(MessagingTestApplication.LISTENER_QUEUE + ".dlq", 10_000);
+        assertThat(dead).isNotNull();
+        assertThat(output.getAll()).contains("Dead-lettering message").doesNotContain("PII-MARKER");
     }
 
     private void send(String body, String correlationId) {

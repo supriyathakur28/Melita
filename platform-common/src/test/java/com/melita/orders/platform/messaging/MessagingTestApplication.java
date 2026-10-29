@@ -77,7 +77,7 @@ class MessagingTestApplication {
             if (body.equals("poison")) {
                 throw new PoisonMessageException("unreadable payload");
             }
-            if (body.equals("always-fail")) {
+            if (body.startsWith("always-fail")) {
                 throw new IllegalStateException("database unavailable");
             }
             if (body.startsWith("flaky-") && attempt <= Integer.parseInt(body.substring(6))) {

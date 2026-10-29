@@ -2,18 +2,22 @@ package com.melita.orders.platform.messaging;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.retry.MessageRecoverer;
-import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
 
 import java.util.List;
 
-/** Runs the failure callbacks, then rejects without requeue so RabbitMQ moves the message to the DLQ. */
+/**
+ * Runs the failure callbacks, then rejects without requeue so RabbitMQ moves the message to the DLQ.
+ * <p>
+ * Logs only the message ID and type. Spring's {@code RejectAndDontRequeueRecoverer} is not used because it
+ * logs the whole message, and an {@code order.accepted} body contains personal data.
+ */
 class DeadLetteringRecoverer implements MessageRecoverer {
 
     private static final Logger log = LoggerFactory.getLogger(DeadLetteringRecoverer.class);
 
-    private final RejectAndDontRequeueRecoverer reject = new RejectAndDontRequeueRecoverer();
     private final List<ListenerFailureCallback> callbacks;
 
     DeadLetteringRecoverer(List<ListenerFailureCallback> callbacks) {
@@ -31,7 +35,7 @@ class DeadLetteringRecoverer implements MessageRecoverer {
                 log.warn("Dead-letter callback failed", e);
             }
         }
-        reject.recover(message, cause);
+        throw new AmqpRejectAndDontRequeueException("Retries exhausted or poison message", cause);
     }
 
     static String rootMessage(Throwable throwable) {
