@@ -34,6 +34,8 @@ import java.util.UUID;
 public class CustomerOrder implements Persistable<UUID> {
 
     public static final String SYSTEM = "system";
+    static final int ERROR_LENGTH = 255;
+    static final int REASON_LENGTH = 500;
 
     @Id
     @JdbcTypeCode(SqlTypes.CHAR)
@@ -55,6 +57,9 @@ public class CustomerOrder implements Persistable<UUID> {
 
     @Embedded
     private Installation installation;
+
+    @Column(name = "preferred_slot_expired")
+    private Boolean preferredSlotExpired;
 
     @Column(name = "approval_required", nullable = false)
     private boolean approvalRequired;
@@ -162,15 +167,26 @@ public class CustomerOrder implements Persistable<UUID> {
             throw new InvalidTransitionException(status, OrderStatus.READY_FOR_FULFILMENT);
         }
         attempts++;
-        lastError = error;
+        lastError = truncate(error, ERROR_LENGTH);
         nextAttemptAt = retryAt;
         updatedAt = now;
+    }
+
+    /**
+     * Whether the preferred installation date had passed, decided on the first submission attempt and then
+     * kept: a retry must send Fulfilment the same body, or its idempotency check sees a different request.
+     */
+    public boolean preferredSlotExpired(java.time.LocalDate today) {
+        if (preferredSlotExpired == null) {
+            preferredSlotExpired = installation != null && installation.isExpiredOn(today);
+        }
+        return preferredSlotExpired;
     }
 
     public void markFulfilmentFailed(String error, Instant now) {
         transitionTo(OrderStatus.FULFILMENT_FAILED, SYSTEM, error, now);
         attempts++;
-        lastError = error;
+        lastError = truncate(error, ERROR_LENGTH);
         nextAttemptAt = null;
     }
 
@@ -178,9 +194,13 @@ public class CustomerOrder implements Persistable<UUID> {
         if (!status.canTransitionTo(target)) {
             throw new InvalidTransitionException(status, target);
         }
-        history.add(new StatusChange(this, status, target, actor, reason, now));
+        history.add(new StatusChange(this, status, target, actor, truncate(reason, REASON_LENGTH), now));
         status = target;
         updatedAt = now;
+    }
+
+    private static String truncate(String text, int length) {
+        return text == null || text.length() <= length ? text : text.substring(0, length);
     }
 
     @PostLoad

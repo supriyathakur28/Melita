@@ -77,12 +77,27 @@ public class FulfilmentSubmitter {
                 submit(orderId);
             } catch (OptimisticLockingFailureException e) {
                 log.info("Order {} changed while submitting; it will be retried on the next run", orderId);
+            } catch (RuntimeException e) {
+                // One bad order must not block the others: record a failed attempt, so it backs off and
+                // eventually fails, instead of staying first in the queue.
+                log.error("Unexpected error submitting order {}", orderId, e);
+                recordUnexpected(orderId, e);
             }
         }
     }
 
+    private void recordUnexpected(UUID orderId, RuntimeException e) {
+        try {
+            transaction.executeWithoutResult(status ->
+                    record(orderId, new FulfilmentOutcome.RetryLater("unexpected error: " + e.getClass().getSimpleName())));
+        } catch (RuntimeException again) {
+            log.error("Could not record the failed attempt for order {}", orderId, again);
+        }
+    }
+
     private void submit(UUID orderId) {
-        FulfilmentRequest request = readOnly.execute(status -> toRequest(orders.findWithItemsById(orderId).orElseThrow()));
+        // A write transaction: the first attempt fixes preferredSlotExpired so retries send the same body.
+        FulfilmentRequest request = transaction.execute(status -> toRequest(orders.findWithItemsById(orderId).orElseThrow()));
         FulfilmentOutcome outcome = client.submit(request);
         if (outcome instanceof FulfilmentOutcome.NotAttempted) {
             return;
@@ -138,7 +153,7 @@ public class FulfilmentSubmitter {
             var i = order.getInstallation();
             LocalDate today = LocalDate.now(clock.withZone(ordersProperties.zone()));
             installation = new FulfilmentRequest.Installation(address(i.address()), i.preferredDate(), i.timeSlot(),
-                    i.isExpiredOn(today));
+                    order.preferredSlotExpired(today));
         }
         var items = order.getItems().stream()
                 .map(i -> new FulfilmentRequest.Item(i.getProductCode(), i.getPackageCode(), i.getPackageName()))

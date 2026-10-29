@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
@@ -64,6 +65,9 @@ public class FulfilmentClient {
             throw new TemporaryFailure("HTTP " + status.value() + " from Fulfilment");
         } catch (ResourceAccessException e) {
             throw new TemporaryFailure("Fulfilment unreachable: " + e.getMessage());
+        } catch (RestClientException e) {
+            // e.g. a 2xx whose body cannot be read: the outcome is unknown, so retry with the same key.
+            throw new TemporaryFailure("Unreadable response from Fulfilment: " + e.getClass().getSimpleName());
         }
     }
 

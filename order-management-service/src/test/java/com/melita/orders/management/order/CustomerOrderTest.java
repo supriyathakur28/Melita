@@ -101,6 +101,23 @@ class CustomerOrderTest {
     }
 
     @Test
+    void preferredSlotExpiryIsDecidedOnceSoRetriesSendTheSameBody() {
+        CustomerOrder order = order(List.of());
+
+        assertThat(order.preferredSlotExpired(LocalDate.of(2026, 11, 8))).isFalse();
+        assertThat(order.preferredSlotExpired(LocalDate.of(2026, 11, 10))).isFalse();
+    }
+
+    @Test
+    void longErrorsAreTruncatedToFitTheirColumns() {
+        CustomerOrder order = order(List.of());
+
+        order.recordFailedAttempt("x".repeat(1000), NOW, NOW);
+
+        assertThat(order.getLastError()).hasSize(255);
+    }
+
+    @Test
     void customerToStringMasksTheIdNumber() {
         assertThat(order(List.of()).getCustomer().toString()).contains("****56M").doesNotContain("123456M");
     }

@@ -106,6 +106,16 @@ class OrderProcessingIT extends ManagementIntegrationTest {
     }
 
     @Test
+    void successWithoutAUsableBodyIsTreatedAsUnknownAndRetried() {
+        UUID orderId = UUID.randomUUID();
+        FULFILMENT.script(orderId.toString(), 200);
+        publishAccepted(TestOrderEvents.accepted(orderId, List.of(TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")), null));
+
+        await().atMost(Duration.ofSeconds(15)).until(() -> statusOf(orderId) == OrderStatus.SUBMITTED);
+        assertThat(FULFILMENT.receivedFor(orderId.toString())).hasSize(2);
+    }
+
+    @Test
     void rejectedByFulfilmentFailsTheOrderWithoutRetry() {
         UUID orderId = UUID.randomUUID();
         FULFILMENT.script(orderId.toString(), 422);
