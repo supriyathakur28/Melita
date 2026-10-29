@@ -106,6 +106,11 @@ class WebTestApplication {
             return payload;
         }
 
+        @GetMapping("/test/concurrent")
+        void concurrent() {
+            throw new org.springframework.dao.OptimisticLockingFailureException("row version changed");
+        }
+
         @GetMapping("/test/teapot")
         void teapot() {
             throw new ApiException(HttpStatus.I_AM_A_TEAPOT, "TEAPOT", "short and stout");

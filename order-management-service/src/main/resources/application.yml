@@ -1,0 +1,11 @@
+# Everything else comes from the Config Server (config-repo/order-management-service*.yml).
+spring:
+  application:
+    name: order-management-service
+  config:
+    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    config:
+      username: ${CONFIG_SERVER_USER:config}
+      password: ${CONFIG_SERVER_PASSWORD}
+      fail-fast: true

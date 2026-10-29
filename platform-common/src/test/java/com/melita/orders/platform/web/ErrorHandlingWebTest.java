@@ -73,6 +73,13 @@ class ErrorHandlingWebTest {
     }
 
     @Test
+    void optimisticLockFailureIs409() throws Exception {
+        mvc.perform(get("/test/concurrent").with(jwt()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONCURRENT_UPDATE"));
+    }
+
+    @Test
     void businessRulesAre422WithEveryViolation() throws Exception {
         mvc.perform(get("/test/rules").with(jwt()))
                 .andExpect(status().isUnprocessableContent())

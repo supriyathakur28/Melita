@@ -23,6 +23,7 @@
         <module>config-server</module>
         <module>order-intake-service</module>
         <module>fulfilment-stub</module>
+        <module>order-management-service</module>
     </modules>
 
     <properties>
