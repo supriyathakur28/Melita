@@ -111,7 +111,8 @@ class ApprovalFlowIT extends ManagementIntegrationTest {
         assertThat(FULFILMENT.receivedFor(orderId.toString()).getFirst().body()).contains("\"preferredSlotExpired\":true");
     }
 
-    @Test
+    /** Repeated: the race is timing-dependent; it once exposed a MySQL deadlock (fixed with a row lock). */
+    @org.junit.jupiter.api.RepeatedTest(10)
     void twoAgentsDecidingAtOnceGetOneWinnerAndOne409() throws Exception {
         UUID orderId = heldOrder(null);
         CountDownLatch start = new CountDownLatch(1);

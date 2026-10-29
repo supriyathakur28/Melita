@@ -4,6 +4,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -51,9 +52,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(SecurityProblems.unauthorized());
     }
 
-    /** Someone else changed the same row first (JPA {@code @Version}): the client should re-read and decide again. */
-    @ExceptionHandler(OptimisticLockingFailureException.class)
-    ResponseEntity<ProblemDetail> handleOptimisticLock(OptimisticLockingFailureException ex) {
+    /**
+     * Someone else changed the same row first ({@code @Version}), or a lock could not be obtained (lock wait
+     * timeout, deadlock victim): the client should re-read and try again.
+     */
+    @ExceptionHandler({OptimisticLockingFailureException.class, PessimisticLockingFailureException.class})
+    ResponseEntity<ProblemDetail> handleConcurrentUpdate(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Problems.of(HttpStatus.CONFLICT, "CONCURRENT_UPDATE",
                 "Conflict", "The resource was changed by another request. Reload it and try again."));
     }

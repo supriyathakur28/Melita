@@ -29,7 +29,8 @@ import java.util.UUID;
 
 /**
  * Agent actions. A decision and its event commit together (outbox). Two agents deciding the same order at
- * once: the state machine and {@code @Version} make the second one fail with 409.
+ * once: the row lock makes the second wait, then the state machine rejects it with 409; {@code @Version} stays
+ * as a safety net.
  */
 @Service
 @PreAuthorize("hasRole('AGENT')")
@@ -68,7 +69,7 @@ public class AgentOrderService {
 
     @Transactional
     public OrderViews.Detail approve(UUID orderId, String agent, String comment) {
-        CustomerOrder order = load(orderId);
+        CustomerOrder order = loadForUpdate(orderId);
         Instant now = now();
         order.approve(agent, comment, now);
         boolean slotExpired = slotExpired(order);
@@ -81,7 +82,7 @@ public class AgentOrderService {
 
     @Transactional
     public OrderViews.Detail reject(UUID orderId, String agent, String reason) {
-        CustomerOrder order = load(orderId);
+        CustomerOrder order = loadForUpdate(orderId);
         Instant now = now();
         order.reject(agent, reason, now);
         outbox.append(EventEnvelope.of(OrderEvents.ORDER_REJECTED, RequestIds.current(), now,
@@ -89,6 +90,11 @@ public class AgentOrderService {
         orders.saveAndFlush(order);
         log.info("Order {} rejected by {}", orderId, agent);
         return OrderViews.detail(order, List.of());
+    }
+
+    /** Locks the order row for the decision, so concurrent decisions queue instead of deadlocking. */
+    private CustomerOrder loadForUpdate(UUID orderId) {
+        return orders.findForUpdate(orderId).orElseThrow(() -> ApiException.notFound("Order"));
     }
 
     private CustomerOrder load(UUID orderId) {

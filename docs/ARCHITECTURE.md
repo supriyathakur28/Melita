@@ -1,6 +1,6 @@
 # Melita Order Taking & Approval Platform — Architecture and System Design
 
-Status: **v1.1, approved** · Author: Supriya Thakur · Date: 2026-10-29
+Status: **v1.2, matches the implementation** · Author: Supriya Thakur · Date: 2026-10-29
 
 ---
 
@@ -167,7 +167,7 @@ Melita/
 ├── notification-service/
 ├── fulfilment-stub/
 ├── config-repo/             (configuration served by Config Server)
-├── infra/                   (Keycloak realm, MySQL init, RabbitMQ definitions)
+├── infra/                   (Keycloak realm, MySQL init script, RabbitMQ users/permissions setup script)
 ├── postman/                 (collection and environments)
 ├── docs/ARCHITECTURE.md
 ├── docker-compose.yml, .env.example
@@ -301,7 +301,7 @@ sequenceDiagram
 | **Dead Letter Channel** | A DLQ per consumer queue | Failed messages are parked, not lost, and don't block the queue |
 | **Event-Carried State Transfer** | `order.accepted` carries the full validated order | Consumers never call back to intake |
 | **State Machine** | `OrderStatus` with allowed transitions | Illegal moves become a 409, never a silent overwrite |
-| **Optimistic Locking** | `@Version` on the order | Two agents deciding at once: one wins, the other gets 409 |
+| **Pessimistic + optimistic locking** | `SELECT … FOR UPDATE` before a decision; `@Version` on the order | Two agents deciding at once: the second waits and gets 409; no deadlock |
 | **Circuit Breaker** | Fulfilment client | Stops hammering a failing Fulfilment system |
 | **Cache-Aside** | Product catalogue in Redis | Read on every order, rarely changed; falls back to the DB |
 | **Correlation Identifier** | `X-Request-Id` → logs → event → logs | One ID follows an order across services |
@@ -563,12 +563,12 @@ since email is at-least-once by nature.
 
 | Table | Key columns and constraints | Indexes |
 |---|---|---|
-| `customer_order` | `id` PK (= intake orderId), `partner_id`, `external_reference`, `status` (CHECK), embedded customer and address, installation (nullable), `id_document_number` (**encrypted**), `approval_reasons JSON`, `decided_by`, `decided_at`, `decision_reason`, `fulfilment_reference`, `attempts`, `next_attempt_at`, `version`, `received_at` | `(status, received_at)` for the pending list; `(status, next_attempt_at)` for the submitter |
+| `customer_order` | `id` PK (= intake orderId), `partner_id`, `external_reference`, `status` (CHECK), embedded customer and address, installation (nullable), `id_document_number` (**encrypted**), `approval_reasons` (comma-separated codes), `decided_by`, `decided_at`, `decision_note`, `fulfilment_reference`, `attempts`, `next_attempt_at`, `last_error`, `version`, `received_at`, `updated_at` | `(status, received_at)` for the pending list; `(status, next_attempt_at)` for the submitter |
 | `order_item` | `id` PK, `order_id` FK, `product_code`, `package_code`, `package_name`; UNIQUE(`order_id`, `product_code`) | FK |
 | `order_status_history` | `id` PK, `order_id` FK, `from_status`, `to_status`, `actor`, `reason`, `occurred_at` | `(order_id, occurred_at)` |
 | `processed_message` | **PK(`message_id`)**, `processed_at` | — |
 | `outbox_event` | as in intake | as in intake |
-| `notification` *(notification DB)* | `id` PK, `event_id`, `template`, `order_id`, `recipient`, `status` (`PENDING`/`SENT`/`FAILED`), `last_error`, `created_at`, `sent_at`; **UNIQUE(`event_id`, `template`)** | the unique key is the dedupe |
+| `notification` *(notification DB)* | `id` PK, `event_id`, `template`, `order_id`, `recipient`, `status` (`PENDING`/`SENT`/`FAILED`), `attempts`, `last_error`, `created_at`, `sent_at`; **UNIQUE(`event_id`, `template`)** | the unique key is the dedupe |
 
 - **ID document number:** encrypted with AES-256-GCM by a JPA `AttributeConverter`, with the key from the
   environment. Stored as `v1:<base64>`; the prefix leaves room for key rotation. It is masked (`****56M`)
@@ -584,9 +584,9 @@ since email is at-least-once by nature.
 | Scenario | Outcome | Mechanism |
 |---|---|---|
 | Same `Idempotency-Key` sent twice in parallel | One order; the second request gets the first response | The second insert waits on the unique key, fails, and is re-read and replayed |
-| Two agents decide the same order at once | One wins; the other gets 409 | `@Version` optimistic locking |
+| Two agents decide the same order at once | One wins; the other gets 409 | The decision reads the order with `SELECT … FOR UPDATE`; the second waits, then the state machine rejects it. `@Version` stays as a safety net. Without the row lock, MySQL deadlocks: each status-history insert takes a shared lock on the order row (foreign key check) before each update needs an exclusive one |
 | Same event delivered twice | One order, one email | Inbox primary key; `notification` unique key |
-| Submitter finishes after an agent changed the order | Its update fails on `@Version` and is retried on the next tick | Optimistic locking |
+| Submitter finishes after an agent changed the order | Agents cannot change a READY order; the submitter's update also locks the row and is guarded by `@Version` | Row lock + optimistic locking |
 
 **Scheduled jobs run on one instance at a time.** The outbox relay and the Fulfilment submitter run on
 every instance, but each tick first takes a MySQL named lock: `GET_LOCK('outbox-relay', 0)` or
@@ -664,7 +664,11 @@ catalogue is read from MySQL.
 ## 13. Configuration (Spring Cloud Config)
 
 - Config Server uses the **git backend**, reading `config-repo/` from this repository. Configuration is
-  versioned and every change is auditable. The README notes it serves committed changes only.
+  versioned and every change is auditable.
+  - It **clones** the repository into its own directory (the URI is a plain path, not `file:`). A `file:`
+    URI would make it check out branches in the working tree it reads from.
+  - It serves committed changes only, from the label `CONFIG_GIT_LABEL` (default `main`; CI uses the commit
+    under test).
 - Files: `application.yml` (shared), `<service>.yml`, and `<service>-docker.yml` (container host names).
 - Each service has only `spring.application.name` and `spring.config.import=configserver:…` locally, with
   fail-fast and retry. Config Server access uses HTTP Basic credentials from the environment.

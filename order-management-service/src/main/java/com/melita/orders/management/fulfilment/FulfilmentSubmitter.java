@@ -91,7 +91,7 @@ public class FulfilmentSubmitter {
     }
 
     private void record(UUID orderId, FulfilmentOutcome outcome) {
-        CustomerOrder order = orders.findById(orderId).orElseThrow();
+        CustomerOrder order = orders.findForUpdate(orderId).orElseThrow();
         Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         switch (outcome) {
             case FulfilmentOutcome.Submitted submitted -> {

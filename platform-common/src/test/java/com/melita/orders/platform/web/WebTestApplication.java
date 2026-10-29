@@ -111,6 +111,11 @@ class WebTestApplication {
             throw new org.springframework.dao.OptimisticLockingFailureException("row version changed");
         }
 
+        @GetMapping("/test/deadlock")
+        void deadlock() {
+            throw new org.springframework.dao.CannotAcquireLockException("Deadlock found when trying to get lock");
+        }
+
         @GetMapping("/test/teapot")
         void teapot() {
             throw new ApiException(HttpStatus.I_AM_A_TEAPOT, "TEAPOT", "short and stout");
