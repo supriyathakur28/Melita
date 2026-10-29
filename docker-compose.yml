@@ -1,6 +1,6 @@
 # Local stack: infrastructure plus every service.
 #   cp .env.example .env && ./mvnw -DskipTests package && docker compose up -d --build --wait
-# Credentials come from .env. Only the two APIs and the developer UIs are published on the host.
+# Credentials come from .env. Published ports are bound to 127.0.0.1: reachable from this machine only.
 
 name: melita-orders
 
@@ -15,7 +15,7 @@ services:
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
     command: ["--default-time-zone=+00:00"]
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     volumes:
       - ./infra/mysql:/docker-entrypoint-initdb.d:ro
       - mysql-data:/var/lib/mysql
@@ -30,9 +30,11 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_ADMIN_PASSWORD}
+    volumes:
+      - ./infra/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
     ports:
-      - "5672:5672"
-      - "15672:15672"   # management UI
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"   # management UI (shovel plugin enabled to move messages out of DLQs)
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 5s
@@ -58,7 +60,7 @@ services:
     image: redis:7.4-alpine
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep PONG"]
       interval: 5s
@@ -79,7 +81,7 @@ services:
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_HEALTH_ENABLED: "true"
     ports:
-      - "8180:8180"
+      - "127.0.0.1:8180:8180"
     volumes:
       - ./infra/keycloak/melita-realm.json:/opt/keycloak/data/import/melita-realm.json:ro
     healthcheck:
@@ -91,8 +93,8 @@ services:
   mailpit:
     image: axllent/mailpit:v1.27
     ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # web UI and API
+      - "127.0.0.1:1025:1025"   # SMTP
+      - "127.0.0.1:8025:8025"   # web UI and API
     healthcheck:
       test: ["CMD", "/mailpit", "readyz"]
       interval: 5s
@@ -109,6 +111,8 @@ services:
       # Branch, tag or commit to serve configuration from (CI passes the commit under test).
       CONFIG_GIT_LABEL: ${CONFIG_GIT_LABEL:-main}
       CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
+    ports:
+      - "127.0.0.1:8888:8888"   # for services started from the IDE
     volumes:
       # The Config Server reads committed configuration from this repository's git history.
       - .:/repo:ro
@@ -131,7 +135,7 @@ services:
       ORDER_INTAKE_RABBITMQ_PASSWORD: ${ORDER_INTAKE_RABBITMQ_PASSWORD}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
-      - "8081:8081"   # public Order Taking API
+      - "127.0.0.1:8081:8081"   # public Order Taking API
     depends_on: &service-dependencies
       config-server:
         condition: service_healthy
@@ -163,7 +167,7 @@ services:
       ORDER_MANAGEMENT_CLIENT_SECRET: ${ORDER_MANAGEMENT_CLIENT_SECRET}
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
     ports:
-      - "8082:8082"   # private Order Approval API (internal network only in production)
+      - "127.0.0.1:8082:8082"   # private Order Approval API (internal network only in production)
     depends_on:
       <<: *service-dependencies
       fulfilment-stub:
