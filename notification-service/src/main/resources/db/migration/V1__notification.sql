@@ -1,4 +1,5 @@
 -- Notification log: one row per email. The unique key is the consumer's dedupe; the status records delivery.
+-- SENDING + claimed_until is a lease: only the consumer whose conditional update claimed the row sends it.
 
 create table notification (
     id         bigint auto_increment primary key,
@@ -7,12 +8,13 @@ create table notification (
     order_id   char(36) character set ascii collate ascii_bin not null,
     recipient  varchar(254) not null,
     status     varchar(16)  not null,
+    claimed_until datetime(6),
     attempts   int          not null default 0,
     last_error varchar(255),
     created_at datetime(6)  not null,
     sent_at    datetime(6),
     constraint uk_notification_event_template unique (event_id, template),
-    constraint ck_notification_status check (status in ('PENDING', 'SENT', 'FAILED')),
+    constraint ck_notification_status check (status in ('PENDING', 'SENDING', 'SENT', 'FAILED')),
     -- Failed or stuck notifications, oldest first (support view and alerting).
     index ix_notification_status_created (status, created_at)
 ) engine = InnoDB default charset = utf8mb4 collate = utf8mb4_unicode_ci;

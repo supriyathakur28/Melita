@@ -42,6 +42,35 @@ class NotificationIT extends NotificationIntegrationTest {
         assertThat(mailbox().stream().filter(expected::equals).count()).isGreaterThanOrEqualTo(1);
     }
 
+    @Autowired
+    NotificationService service;
+
+    @Test
+    void theSameEventProcessedConcurrentlyIsEmailedOnce() throws Exception {
+        var order = EmailComposerTest.order();
+        String reference = "ERP-RACE-" + order.orderId().toString().substring(0, 8);
+        var email = new Email(java.util.UUID.randomUUID().toString(), order.orderId().toString(), "order-accepted",
+                "New order " + reference, "<p>race</p>");
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try (var pool = java.util.concurrent.Executors.newFixedThreadPool(4)) {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+            for (int i = 0; i < 4; i++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    service.send(email);
+                    return null;
+                }));
+            }
+            start.countDown();
+            for (var future : futures) {
+                future.get();
+            }
+        }
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> mailbox().contains("New order " + reference + " -> agents@melita.example"));
+        assertThat(mailbox().stream().filter(m -> m.startsWith("New order " + reference)).count()).isEqualTo(1);
+    }
+
     @Test
     void approvalRequestIsEmailed() {
         var data = new OrderApprovalRequested(java.util.UUID.randomUUID(), "ERP-77", List.of("PACKAGE:MOBILE_POSTPAID"),

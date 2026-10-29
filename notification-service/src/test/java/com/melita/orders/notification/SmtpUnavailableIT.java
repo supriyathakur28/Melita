@@ -36,7 +36,7 @@ class SmtpUnavailableIT extends NotificationIntegrationTest {
         await().atMost(Duration.ofSeconds(5)).until(() -> notifications.findByOrderId(order.orderId().toString())
                 .stream().anyMatch(n -> n.getStatus() == Notification.Status.FAILED));
         Notification failed = notifications.findByOrderId(order.orderId().toString()).getFirst();
-        assertThat(failed.getAttempts()).isEqualTo(2);
+        assertThat(failed.getAttempts()).as("first try plus one listener retry").isEqualTo(2);
         assertThat(failed.getLastError()).isNotBlank();
     }
 }

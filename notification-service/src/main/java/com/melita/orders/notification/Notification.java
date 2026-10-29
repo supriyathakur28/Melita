@@ -11,12 +11,15 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** One email: PENDING when claimed, SENT once the SMTP server accepted it, FAILED after retries ran out. */
+/**
+ * One email: PENDING when recorded, SENDING while one consumer holds the lease, SENT once the SMTP server
+ * accepted it, FAILED after retries ran out.
+ */
 @Entity
 @Table(name = "notification")
 public class Notification {
 
-    public enum Status { PENDING, SENT, FAILED }
+    public enum Status { PENDING, SENDING, SENT, FAILED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,6 +40,9 @@ public class Notification {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
+
+    @Column(name = "claimed_until")
+    private Instant claimedUntil;
 
     @Column(nullable = false)
     private int attempts;
@@ -62,21 +68,32 @@ public class Notification {
         this.createdAt = now;
     }
 
-    void attempt() {
-        attempts++;
-    }
-
     void sent(Instant now) {
         status = Status.SENT;
         sentAt = now;
+        claimedUntil = null;
         lastError = null;
+    }
+
+    /** The send failed: give the lease back so the listener's retry can claim the row again. */
+    void released(String error) {
+        if (status == Status.SENDING) {
+            status = Status.PENDING;
+            claimedUntil = null;
+            lastError = truncate(error);
+        }
     }
 
     void failed(String error) {
         if (status != Status.SENT) {
             status = Status.FAILED;
-            lastError = error.length() > 255 ? error.substring(0, 255) : error;
+            claimedUntil = null;
+            lastError = truncate(error);
         }
+    }
+
+    private static String truncate(String error) {
+        return error == null || error.length() <= 255 ? error : error.substring(0, 255);
     }
 
     public Long getId() {

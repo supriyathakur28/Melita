@@ -14,17 +14,23 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 
 /**
- * Sends each email once per event. Claim the row (short transaction), send over SMTP with no transaction
- * open, then mark it SENT. If the service crashes between the send and the mark, a redelivery sends the email
- * again: email is at-least-once, and that rare duplicate is accepted.
+ * Sends each email once per event. Claim the row with a lease (short transaction, atomic conditional update),
+ * send over SMTP with no transaction open, then mark it SENT. Two copies of the same event processed at once:
+ * only one claim succeeds, the other is skipped. If the service crashes between the send and the mark, the
+ * lease expires and a redelivery sends the email again: email is at-least-once, and that rare duplicate is
+ * accepted.
  */
 @Service
 public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+    /** Longer than the SMTP connect, read and write timeouts together. */
+    private static final Duration LEASE = Duration.ofMinutes(2);
 
     private final NotificationRepository notifications;
     private final JavaMailSender mailSender;
@@ -45,10 +51,16 @@ public class NotificationService {
     public void send(Email email) {
         Optional<Long> claimed = claim(email);
         if (claimed.isEmpty()) {
-            log.info("Email {} for event {} was already sent, skipped", email.template(), email.eventId());
+            log.info("Email {} for event {} was already sent or is being sent, skipped", email.template(), email.eventId());
             return;
         }
-        mailSender.send(mime(email));
+        try {
+            mailSender.send(mime(email));
+        } catch (RuntimeException e) {
+            transaction.executeWithoutResult(status ->
+                    notifications.findById(claimed.get()).ifPresent(n -> n.released(e.getClass().getSimpleName())));
+            throw e;
+        }
         transaction.executeWithoutResult(status ->
                 notifications.findById(claimed.get()).orElseThrow().sent(clock.instant()));
         log.info("Sent {} email for order {}", email.template(), email.orderId());
@@ -60,7 +72,7 @@ public class NotificationService {
                 notifications.findByEventId(eventId).forEach(n -> n.failed(error)));
     }
 
-    /** @return the row to send, or empty if this email was already sent. */
+    /** @return the row to send, or empty if this email was already sent or another consumer holds the lease. */
     private Optional<Long> claim(Email email) {
         try {
             return transaction.execute(status -> claimOrReuse(email));
@@ -73,11 +85,10 @@ public class NotificationService {
         Notification notification = notifications.findByEventIdAndTemplate(email.eventId(), email.template())
                 .orElseGet(() -> notifications.saveAndFlush(new Notification(email.eventId(), email.template(),
                         email.orderId(), properties.agentsMailbox(), clock.instant())));
-        if (notification.getStatus() == Notification.Status.SENT) {
-            return Optional.empty();
-        }
-        notification.attempt();
-        return Optional.of(notification.getId());
+        Instant now = clock.instant();
+        return notifications.claim(notification.getId(), now, now.plus(LEASE)) == 1
+                ? Optional.of(notification.getId())
+                : Optional.empty();
     }
 
     private MimeMessage mime(Email email) {
