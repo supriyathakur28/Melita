@@ -22,9 +22,10 @@ user order-intake "$ORDER_INTAKE_RABBITMQ_PASSWORD" \
   '^orders\\.events.*$' '^orders\\.events$' '^$'
 user order-management "$ORDER_MANAGEMENT_RABBITMQ_PASSWORD" \
   '^(orders\\.events.*|order-management\\..*)$' '^(orders\\.events.*|order-management\\..*)$' '^(orders\\.events.*|order-management\\..*)$'
-# notification only consumes: it may bind its queues (read on the exchanges) but never publish an order event.
+# notification only consumes: it may bind its queues (read on the exchanges) and declare them with the
+# dead-letter exchange (RabbitMQ requires write on the DLX for that), but never publish to orders.events.
 user notification "$NOTIFICATION_RABBITMQ_PASSWORD" \
-  '^(orders\\.events.*|notification\\..*)$' '^notification\\..*$' '^(orders\\.events.*|notification\\..*)$'
+  '^(orders\\.events.*|notification\\..*)$' '^(orders\\.events\\.dlx|notification\\..*)$' '^(orders\\.events.*|notification\\..*)$'
 
 put "exchanges/%2F/orders.events" '{"type":"topic","durable":true}'
 for queue in fulfilment.order-events care.order-events; do
