@@ -52,6 +52,12 @@ management:
     health:
       probes:
         enabled: true
+      show-details: never
+      group:
+        # Ready only when the database and the broker are reachable. Redis and SMTP are optional
+        # dependencies: their outage degrades the service but must not take it out of rotation.
+        readiness:
+          include: readinessState,db,rabbit
   info:
     env:
       enabled: true
