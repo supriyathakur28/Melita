@@ -1,0 +1,102 @@
+# Local stack. `docker compose up -d` starts the infrastructure and every service.
+# Credentials come from .env (copy .env.example). Only the APIs and the developer UIs are published.
+
+name: melita-orders
+
+services:
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      ORDER_INTAKE_DB_PASSWORD: ${ORDER_INTAKE_DB_PASSWORD}
+      ORDER_MANAGEMENT_DB_PASSWORD: ${ORDER_MANAGEMENT_DB_PASSWORD}
+      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+    command: ["--default-time-zone=+00:00"]
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./infra/mysql:/docker-entrypoint-initdb.d:ro
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_ADMIN_PASSWORD}
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  rabbitmq-setup:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_ADMIN_PASSWORD: ${RABBITMQ_ADMIN_PASSWORD}
+      ORDER_INTAKE_RABBITMQ_PASSWORD: ${ORDER_INTAKE_RABBITMQ_PASSWORD}
+      ORDER_MANAGEMENT_RABBITMQ_PASSWORD: ${ORDER_MANAGEMENT_RABBITMQ_PASSWORD}
+      NOTIFICATION_RABBITMQ_PASSWORD: ${NOTIFICATION_RABBITMQ_PASSWORD}
+    volumes:
+      - ./infra/rabbitmq/setup.sh:/setup.sh:ro
+    entrypoint: ["/bin/sh", "/setup.sh"]
+    restart: "no"
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm", "--http-port=8180"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      # Tokens always carry iss=http://localhost:8180/realms/melita, whether requested from the host
+      # (Postman) or from inside the network (order-management). Services fetch keys via keycloak:8180.
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8180:8180"
+    volumes:
+      - ./infra/keycloak/melita-realm.json:/opt/keycloak/data/import/melita-realm.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI and API
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  mysql-data:

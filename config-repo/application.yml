@@ -1,0 +1,57 @@
+# Shared by every service. Host names here are for running services on the host (docker compose for
+# infrastructure only); application-docker.yml overrides them for the full compose stack.
+spring:
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD}
+      timeout: 200ms
+  rabbitmq:
+    host: localhost
+    port: 5672
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        prefetch: 10
+        concurrency: 2
+        max-concurrency: 4
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Keycloak's public hostname is pinned, so tokens always carry this issuer. Keys are fetched from
+          # jwk-set-uri, which inside Docker points at the internal host name.
+          issuer-uri: http://localhost:8180/realms/melita
+          jwk-set-uri: ${keycloak.internal-url:http://localhost:8180}/realms/melita/protocol/openid-connect/certs
+
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

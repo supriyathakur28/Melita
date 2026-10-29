@@ -1,0 +1,15 @@
+# Container host names for the full docker compose stack.
+spring:
+  data:
+    redis:
+      host: redis
+  rabbitmq:
+    host: rabbitmq
+
+keycloak:
+  internal-url: http://keycloak:8180
+
+logging:
+  structured:
+    format:
+      console: ecs

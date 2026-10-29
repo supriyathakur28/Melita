@@ -1,0 +1,26 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          # The repository holding config-repo/. Locally: this checkout (run from the repository root).
+          # In Docker: the repository mounted read-only at /repo. Only committed changes are served.
+          uri: ${CONFIG_GIT_URI:file:${user.dir}}
+          search-paths: config-repo
+          default-label: ${CONFIG_GIT_LABEL:main}
+          clone-on-start: true
+  security:
+    user:
+      name: ${CONFIG_SERVER_USER:config}
+      password: ${CONFIG_SERVER_PASSWORD}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

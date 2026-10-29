@@ -1,0 +1,16 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/order_intake?connectionTimeZone=UTC
+    username: order_intake
+    password: ${ORDER_INTAKE_DB_PASSWORD}
+  rabbitmq:
+    username: order-intake
+    password: ${ORDER_INTAKE_RABBITMQ_PASSWORD}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          audiences: order-intake-api
