@@ -40,7 +40,7 @@ class ConfigServerIT {
 
     @DynamicPropertySource
     static void gitUri(DynamicPropertyRegistry registry) {
-        registry.add("spring.cloud.config.server.git.uri", () -> repository.toUri().toString());
+        registry.add("spring.cloud.config.server.git.uri", () -> repository.toString());
     }
 
     @Test

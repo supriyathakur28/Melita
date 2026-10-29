@@ -7,10 +7,14 @@ spring:
   cloud:
     config:
       server:
+        # Used when a client asks for no label, including by the health indicator.
+        default-label: ${CONFIG_GIT_LABEL:main}
         git:
-          # The repository holding config-repo/. Locally: this checkout (run from the repository root).
-          # In Docker: the repository mounted read-only at /repo. Only committed changes are served.
-          uri: ${CONFIG_GIT_URI:file:${user.dir}}
+          # The repository holding config-repo/: locally this checkout (run from the repository root), in
+          # Docker the repository mounted read-only at /repo. A plain path (no "file:" prefix) makes the
+          # server CLONE it into its own directory; a file: URI would be used in place and the server would
+          # check out branches in the developer's working tree. Only committed changes are served.
+          uri: ${CONFIG_GIT_URI:${user.dir}}
           search-paths: config-repo
           default-label: ${CONFIG_GIT_LABEL:main}
           clone-on-start: true
