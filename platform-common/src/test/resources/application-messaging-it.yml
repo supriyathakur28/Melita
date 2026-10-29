@@ -1,0 +1,14 @@
+spring:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:messaging-schema.sql
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
+messaging:
+  listener:
+    retry:
+      max-retries: 2
+      initial-delay: 100ms
+      max-delay: 200ms

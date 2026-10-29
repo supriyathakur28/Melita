@@ -19,6 +19,7 @@
 
     <modules>
         <module>order-events-contract</module>
+        <module>platform-common</module>
     </modules>
 
     <properties>
