@@ -28,7 +28,7 @@ class ConfigServerIT {
 
     @BeforeAll
     static void createGitRepository() throws Exception {
-        Path configRepo = Files.createDirectories(repository.resolve("config-repo"));
+        final Path configRepo = Files.createDirectories(repository.resolve("config-repo"));
         Files.writeString(configRepo.resolve("order-intake-service.yml"), "slots:\n  min-lead-working-days: 2\n");
         Files.writeString(configRepo.resolve("order-intake-service-docker.yml"), "spring.rabbitmq.host: rabbitmq\n");
         try (Git git = Git.init().setDirectory(repository.toFile()).setInitialBranch("main").call()) {
@@ -39,13 +39,13 @@ class ConfigServerIT {
     }
 
     @DynamicPropertySource
-    static void gitUri(DynamicPropertyRegistry registry) {
+    static void gitUri(final DynamicPropertyRegistry registry) {
         registry.add("spring.cloud.config.server.git.uri", () -> repository.toString());
     }
 
     @Test
     void servesCommittedConfigurationPerApplicationAndProfile() {
-        String body = client().get().uri("/order-intake-service/docker")
+        final String body = client().get().uri("/order-intake-service/docker")
                 .headers(h -> h.setBasicAuth("config", "secret"))
                 .retrieve().body(String.class);
 
@@ -56,7 +56,7 @@ class ConfigServerIT {
 
     @Test
     void rejectsUnauthenticatedRequests() {
-        HttpStatusCode status = client().get().uri("/order-intake-service/default")
+        final HttpStatusCode status = client().get().uri("/order-intake-service/default")
                 .exchange((request, response) -> response.getStatusCode());
 
         assertThat(status.value()).isEqualTo(401);
@@ -64,7 +64,7 @@ class ConfigServerIT {
 
     @Test
     void healthIsPublic() {
-        HttpStatusCode status = client().get().uri("/actuator/health")
+        final HttpStatusCode status = client().get().uri("/actuator/health")
                 .exchange((request, response) -> response.getStatusCode());
 
         assertThat(status.value()).isEqualTo(200);

@@ -17,7 +17,7 @@ public final class RequestIds {
     }
 
     /** Keeps a caller-supplied ID if it is safe to log and echo; otherwise generates one. */
-    public static String acceptOrGenerate(String supplied) {
+    public static String acceptOrGenerate(final String supplied) {
         return supplied != null && ACCEPTED.matcher(supplied).matches() ? supplied : UUID.randomUUID().toString();
     }
 

@@ -37,8 +37,8 @@ public class CacheConfig implements CachingConfigurer {
      * deserialisation is involved.
      */
     @Bean
-    RedisCacheManagerBuilderCustomizer catalogueCache(JsonMapper jsonMapper) {
-        var serializer = new JacksonJsonRedisSerializer<>(jsonMapper, Catalogue.class);
+    RedisCacheManagerBuilderCustomizer catalogueCache(final JsonMapper jsonMapper) {
+        final var serializer = new JacksonJsonRedisSerializer<>(jsonMapper, Catalogue.class);
         return builder -> builder.withCacheConfiguration(CATALOGUE, RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10))
                 .prefixCacheNameWith("order-intake:")
@@ -48,9 +48,9 @@ public class CacheConfig implements CachingConfigurer {
 
     /** A release may change the catalogue (Flyway), so drop what the previous version cached. */
     @EventListener(ApplicationReadyEvent.class)
-    void evictCatalogueOnStartup(ApplicationReadyEvent event) {
-        CacheManager cacheManager = event.getApplicationContext().getBean(CacheManager.class);
-        Cache cache = cacheManager.getCache(CATALOGUE);
+    void evictCatalogueOnStartup(final ApplicationReadyEvent event) {
+        final CacheManager cacheManager = event.getApplicationContext().getBean(CacheManager.class);
+        final Cache cache = cacheManager.getCache(CATALOGUE);
         if (cache != null) {
             try {
                 cache.clear();
@@ -64,22 +64,23 @@ public class CacheConfig implements CachingConfigurer {
     public CacheErrorHandler errorHandler() {
         return new CacheErrorHandler() {
             @Override
-            public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
+            public void handleCacheGetError(final RuntimeException exception, final Cache cache, final Object key) {
                 log.warn("Cache {} unavailable, reading from the database: {}", cache.getName(), exception.getMessage());
             }
 
             @Override
-            public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
+            public void handleCachePutError(final RuntimeException exception, final Cache cache, final Object key,
+                                            final Object value) {
                 log.warn("Could not write to cache {}: {}", cache.getName(), exception.getMessage());
             }
 
             @Override
-            public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
+            public void handleCacheEvictError(final RuntimeException exception, final Cache cache, final Object key) {
                 log.warn("Could not evict from cache {}: {}", cache.getName(), exception.getMessage());
             }
 
             @Override
-            public void handleCacheClearError(RuntimeException exception, Cache cache) {
+            public void handleCacheClearError(final RuntimeException exception, final Cache cache) {
                 log.warn("Could not clear cache {}: {}", cache.getName(), exception.getMessage());
             }
         };

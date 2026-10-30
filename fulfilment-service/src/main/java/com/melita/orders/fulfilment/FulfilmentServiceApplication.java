@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Import;
 @Import({WebSupportConfiguration.class, SecuritySupportConfiguration.class})
 public class FulfilmentServiceApplication {
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         SpringApplication.run(FulfilmentServiceApplication.class, args);
     }
 }

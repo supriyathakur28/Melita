@@ -42,7 +42,7 @@ public abstract class CareIntegrationTest {
     }
 
     /** Subclasses choose the SMTP server: Mailpit, or an unreachable port. */
-    protected static void useMailpit(DynamicPropertyRegistry registry) {
+    protected static void useMailpit(final DynamicPropertyRegistry registry) {
         registry.add("spring.mail.host", MAILPIT::getHost);
         registry.add("spring.mail.port", () -> MAILPIT.getMappedPort(1025));
     }
@@ -52,18 +52,18 @@ public abstract class CareIntegrationTest {
     @Autowired
     protected JsonMapper jsonMapper;
 
-    protected void publish(String eventType, EventEnvelope<?> event) {
+    protected void publish(final String eventType, final EventEnvelope<?> event) {
         rabbitTemplate.send("orders.events", eventType, MessageBuilder.withBody(jsonMapper.writeValueAsBytes(event))
                 .setMessageId(event.eventId().toString()).setType(eventType).build());
     }
 
     /** Subjects and recipients of the emails Mailpit received. */
     protected List<String> mailbox() {
-        JsonNode response = jsonMapper.readTree(RestClient.create().get()
+        final JsonNode response = jsonMapper.readTree(RestClient.create().get()
                 .uri("http://" + MAILPIT.getHost() + ":" + MAILPIT.getMappedPort(8025) + "/api/v1/messages?limit=200")
                 .retrieve().body(String.class));
-        List<String> mails = new ArrayList<>();
-        for (JsonNode message : response.get("messages")) {
+        final List<String> mails = new ArrayList<>();
+        for (final JsonNode message : response.get("messages")) {
             mails.add(message.get("Subject").asString() + " -> " + message.get("To").get(0).get("Address").asString());
         }
         return mails;

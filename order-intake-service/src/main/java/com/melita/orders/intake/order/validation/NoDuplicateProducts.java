@@ -28,12 +28,13 @@ public @interface NoDuplicateProducts {
 
     class Validator implements ConstraintValidator<NoDuplicateProducts, PlaceOrderRequest> {
         @Override
-        public boolean isValid(PlaceOrderRequest request, ConstraintValidatorContext context) {
+        public boolean isValid(final PlaceOrderRequest request, final ConstraintValidatorContext context) {
             if (request == null || request.items() == null) {
                 return true;
             }
-            Set<PlaceOrderRequest.Product> seen = new HashSet<>();
-            boolean valid = request.items().stream().filter(Objects::nonNull).map(PlaceOrderRequest.ItemRequest::product)
+            final Set<PlaceOrderRequest.Product> seen = new HashSet<>();
+            final boolean valid =
+                    request.items().stream().filter(Objects::nonNull).map(PlaceOrderRequest.ItemRequest::product)
                     .filter(Objects::nonNull).allMatch(seen::add);
             if (!valid) {
                 context.disableDefaultConstraintViolation();

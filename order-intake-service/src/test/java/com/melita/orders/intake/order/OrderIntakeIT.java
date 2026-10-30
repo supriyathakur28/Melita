@@ -37,6 +37,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -55,7 +56,7 @@ class OrderIntakeIT extends IntakeIntegrationTest {
     static class EventCapture {
         @Bean
         Declarables captureQueue() {
-            var queue = QueueBuilder.durable(CAPTURE_QUEUE).build();
+            final var queue = QueueBuilder.durable(CAPTURE_QUEUE).build();
             return new Declarables(queue, BindingBuilder.bind(queue).to(Queues.eventsExchange()).with(OrderEvents.ORDER_ACCEPTED));
         }
     }
@@ -76,12 +77,12 @@ class OrderIntakeIT extends IntakeIntegrationTest {
         }
     }
 
-    private static JwtRequestPostProcessor partner(String partnerId) {
+    private static JwtRequestPostProcessor partner(final String partnerId) {
         return jwt().jwt(j -> j.claim("partner_id", partnerId)).authorities(
                 new SimpleGrantedAuthority("SCOPE_orders:write"), new SimpleGrantedAuthority("SCOPE_orders:read"));
     }
 
-    private MvcResult place(String partnerId, String key, Object body) throws Exception {
+    private MvcResult place(final String partnerId, final String key, final Object body) throws Exception {
         return mvc.perform(post("/api/v1/orders").with(partner(partnerId))
                         .header("Idempotency-Key", key).header("X-Request-Id", "req-" + key)
                         .contentType(MediaType.APPLICATION_JSON).content(jsonMapper.writeValueAsString(body)))
@@ -89,16 +90,13 @@ class OrderIntakeIT extends IntakeIntegrationTest {
     }
 
     /** Collects order.accepted events for a few seconds and counts those for the given order. */
-    private long acceptedEventsFor(String orderId) {
-        long count = 0;
-        long deadline = System.currentTimeMillis() + 3_000;
-        while (System.currentTimeMillis() < deadline) {
-            Message message = rabbitTemplate.receive(CAPTURE_QUEUE, 500);
-            if (message != null && new String(message.getBody(), StandardCharsets.UTF_8).contains(orderId)) {
-                count++;
-            }
-        }
-        return count;
+    private long acceptedEventsFor(final String orderId) {
+        final long deadline = System.currentTimeMillis() + 3_000;
+        return Stream.generate(() -> rabbitTemplate.receive(CAPTURE_QUEUE, 500))
+                .takeWhile(message -> System.currentTimeMillis() < deadline)
+                .filter(message -> message != null
+                        && new String(message.getBody(), StandardCharsets.UTF_8).contains(orderId))
+                .count();
     }
 
     private static String uniqueReference() {
@@ -111,23 +109,24 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void acceptedOrderIsPublishedAsOrderAcceptedWithTheFullOrder() throws Exception {
-        String reference = uniqueReference();
-        String key = uniqueKey();
-        var request = TestOrders.internetAndMobile(reference, TestOrders.validInstallationDate());
+        final String reference = uniqueReference();
+        final String key = uniqueKey();
+        final var request = TestOrders.internetAndMobile(reference, TestOrders.validInstallationDate());
 
-        MvcResult result = place("erp-partner", key, request);
+        final MvcResult result = place("erp-partner", key, request);
 
         assertThat(result.getResponse().getStatus()).isEqualTo(201);
-        String orderId = jsonMapper.readTree(result.getResponse().getContentAsString()).get("orderId").asString();
+        final String orderId = jsonMapper.readTree(result.getResponse().getContentAsString()).get("orderId").asString();
 
-        Message message = rabbitTemplate.receive(CAPTURE_QUEUE, 10_000);
+        final Message message = rabbitTemplate.receive(CAPTURE_QUEUE, 10_000);
         assertThat(message).isNotNull();
-        EventEnvelope<OrderAccepted> event = jsonMapper.readValue(
-                new String(message.getBody(), StandardCharsets.UTF_8), new TypeReference<>() { });
+        final EventEnvelope<OrderAccepted> event = jsonMapper.readValue(
+                new String(message.getBody(), StandardCharsets.UTF_8), new TypeReference<>() {
+                });
         assertThat(event.eventType()).isEqualTo(OrderEvents.ORDER_ACCEPTED);
         assertThat(event.correlationId()).isEqualTo("req-" + key);
         assertThat(message.getMessageProperties().getMessageId()).isEqualTo(event.eventId().toString());
-        OrderAccepted order = event.data();
+        final OrderAccepted order = event.data();
         assertThat(order.orderId()).hasToString(orderId);
         assertThat(order.partnerId()).isEqualTo("erp-partner");
         assertThat(order.externalReference()).isEqualTo(reference);
@@ -141,14 +140,14 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void parallelRequestsWithTheSameKeyCreateOneOrder() throws Exception {
-        String key = uniqueKey();
-        var request = TestOrders.mobileOnly(uniqueReference());
-        int callers = 8;
-        CountDownLatch start = new CountDownLatch(1);
-        List<Future<MvcResult>> results = new ArrayList<>();
+        final String key = uniqueKey();
+        final var request = TestOrders.mobileOnly(uniqueReference());
+        final int callers = 8;
+        final CountDownLatch start = new CountDownLatch(1);
+        final List<Future<MvcResult>> results = new ArrayList<>();
         try (ExecutorService pool = Executors.newFixedThreadPool(callers)) {
             for (int i = 0; i < callers; i++) {
-                Callable<MvcResult> call = () -> {
+                final Callable<MvcResult> call = () -> {
                     start.await();
                     return place("erp-partner", key, request);
                 };
@@ -156,9 +155,9 @@ class OrderIntakeIT extends IntakeIntegrationTest {
             }
             start.countDown();
 
-            List<String> orderIds = new ArrayList<>();
-            for (Future<MvcResult> future : results) {
-                MvcResult result = future.get();
+            final List<String> orderIds = new ArrayList<>();
+            for (final Future<MvcResult> future : results) {
+                final MvcResult result = future.get();
                 assertThat(result.getResponse().getStatus()).isEqualTo(201);
                 orderIds.add(jsonMapper.readTree(result.getResponse().getContentAsString()).get("orderId").asString());
             }
@@ -171,11 +170,11 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void retryWithTheSameKeyAndBodyReplaysTheOriginalResponse() throws Exception {
-        String key = uniqueKey();
-        var request = TestOrders.mobileOnly(uniqueReference());
+        final String key = uniqueKey();
+        final var request = TestOrders.mobileOnly(uniqueReference());
 
-        MvcResult first = place("erp-partner", key, request);
-        MvcResult retry = place("erp-partner", key, request);
+        final MvcResult first = place("erp-partner", key, request);
+        final MvcResult retry = place("erp-partner", key, request);
 
         assertThat(retry.getResponse().getStatus()).isEqualTo(201);
         assertThat(retry.getResponse().getHeader("Idempotent-Replayed")).isEqualTo("true");
@@ -184,7 +183,7 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void sameKeyWithADifferentBodyIs422() throws Exception {
-        String key = uniqueKey();
+        final String key = uniqueKey();
         place("erp-partner", key, TestOrders.mobileOnly(uniqueReference()));
 
         mvc.perform(post("/api/v1/orders").with(partner("erp-partner")).header("Idempotency-Key", key)
@@ -196,9 +195,9 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void sameReferenceWithANewKeyIs409WithTheExistingOrder() throws Exception {
-        String reference = uniqueReference();
-        MvcResult first = place("erp-partner", uniqueKey(), TestOrders.mobileOnly(reference));
-        String orderId = jsonMapper.readTree(first.getResponse().getContentAsString()).get("orderId").asString();
+        final String reference = uniqueReference();
+        final MvcResult first = place("erp-partner", uniqueKey(), TestOrders.mobileOnly(reference));
+        final String orderId = jsonMapper.readTree(first.getResponse().getContentAsString()).get("orderId").asString();
 
         mvc.perform(post("/api/v1/orders").with(partner("erp-partner")).header("Idempotency-Key", uniqueKey())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -210,7 +209,7 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void idempotencyKeysAreCaseSensitive() throws Exception {
-        String key = "CaseKey-" + UUID.randomUUID().toString().substring(0, 8);
+        final String key = "CaseKey-" + UUID.randomUUID().toString().substring(0, 8);
         place("erp-partner", key, TestOrders.mobileOnly(uniqueReference()));
 
         assertThat(place("erp-partner", key.toLowerCase(), TestOrders.mobileOnly(uniqueReference()))
@@ -219,7 +218,7 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void theSameReferenceIsFineForAnotherPartner() throws Exception {
-        String reference = uniqueReference();
+        final String reference = uniqueReference();
         place("erp-partner", uniqueKey(), TestOrders.mobileOnly(reference));
 
         assertThat(place("other-partner", uniqueKey(), TestOrders.mobileOnly(reference)).getResponse().getStatus())
@@ -228,8 +227,9 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void partnersCanReadOnlyTheirOwnOrders() throws Exception {
-        MvcResult created = place("erp-partner", uniqueKey(), TestOrders.mobileOnly(uniqueReference()));
-        String orderId = jsonMapper.readTree(created.getResponse().getContentAsString()).get("orderId").asString();
+        final MvcResult created = place("erp-partner", uniqueKey(), TestOrders.mobileOnly(uniqueReference()));
+        final String orderId =
+                jsonMapper.readTree(created.getResponse().getContentAsString()).get("orderId").asString();
 
         mvc.perform(get("/api/v1/orders/" + orderId).with(partner("erp-partner")))
                 .andExpect(status().isOk())
@@ -240,12 +240,13 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void businessRuleViolationsAre422AndNothingIsStored() throws Exception {
-        String reference = uniqueReference();
-        var request = new com.melita.orders.intake.order.api.PlaceOrderRequest(reference, TestOrders.customer(), null,
+        final String reference = uniqueReference();
+        final var request =
+                new com.melita.orders.intake.order.api.PlaceOrderRequest(reference, TestOrders.customer(), null,
                 List.of(new com.melita.orders.intake.order.api.PlaceOrderRequest.ItemRequest(
                         com.melita.orders.intake.order.api.PlaceOrderRequest.Product.INTERNET, "INTERNET_1GBPS")));
 
-        MvcResult result = place("erp-partner", uniqueKey(), request);
+        final MvcResult result = place("erp-partner", uniqueKey(), request);
 
         assertThat(result.getResponse().getStatus()).isEqualTo(422);
         assertThat(result.getResponse().getContentAsString()).contains("INSTALLATION_REQUIRED");
@@ -255,7 +256,7 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void unknownJsonPropertiesAreRejected() throws Exception {
-        String body = jsonMapper.writeValueAsString(TestOrders.mobileOnly(uniqueReference()))
+        final String body = jsonMapper.writeValueAsString(TestOrders.mobileOnly(uniqueReference()))
                 .replaceFirst("\\{", "{\"externalRefrence\":\"typo\",");
 
         mvc.perform(post("/api/v1/orders").with(partner("erp-partner")).header("Idempotency-Key", uniqueKey())
@@ -266,11 +267,12 @@ class OrderIntakeIT extends IntakeIntegrationTest {
 
     @Test
     void catalogueListsActiveProductsAndPackages() throws Exception {
-        String body = mvc.perform(get("/api/v1/catalogue/products").with(partner("erp-partner")))
+        final String body = mvc.perform(get("/api/v1/catalogue/products").with(partner("erp-partner")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        List<Map<String, Object>> products = jsonMapper.readValue(body, new TypeReference<>() { });
+        final List<Map<String, Object>> products = jsonMapper.readValue(body, new TypeReference<>() {
+        });
         assertThat(products).extracting(p -> p.get("code")).containsExactly("INTERNET", "MOBILE", "TELEPHONY", "TV");
     }
 }

@@ -37,13 +37,13 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
     @Autowired
     org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    private static JwtRequestPostProcessor agent(String name) {
+    private static JwtRequestPostProcessor agent(final String name) {
         return jwt().jwt(j -> j.claim("preferred_username", name)).authorities(new SimpleGrantedAuthority("ROLE_AGENT"));
     }
 
-    private UUID heldOrder(LocalDate installationDate) {
-        UUID orderId = UUID.randomUUID();
-        var items = installationDate == null
+    private UUID heldOrder(final LocalDate installationDate) {
+        final UUID orderId = UUID.randomUUID();
+        final var items = installationDate == null
                 ? List.of(TestOrderEvents.item("MOBILE", "MOBILE_POSTPAID"))
                 : List.of(TestOrderEvents.item("INTERNET", "INTERNET_1GBPS"));
         publishAccepted(TestOrderEvents.accepted(orderId, items, installationDate));
@@ -54,7 +54,7 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
 
     @Test
     void pendingOrdersAreListedWithoutPersonalData() throws Exception {
-        UUID orderId = heldOrder(null);
+        final UUID orderId = heldOrder(null);
 
         mvc.perform(get("/api/v1/orders").param("status", "PENDING_APPROVAL").param("size", "100").with(agent("agent1")))
                 .andExpect(status().isOk())
@@ -64,7 +64,7 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
 
     @Test
     void detailMasksTheIdentityDocumentNumber() throws Exception {
-        UUID orderId = heldOrder(null);
+        final UUID orderId = heldOrder(null);
 
         mvc.perform(get("/api/v1/orders/" + orderId).with(agent("agent1")))
                 .andExpect(status().isOk())
@@ -75,7 +75,7 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
 
     @Test
     void approvedOrderIsSubmittedAndTheAgentIsAudited() throws Exception {
-        UUID orderId = heldOrder(null);
+        final UUID orderId = heldOrder(null);
 
         mvc.perform(post("/api/v1/orders/" + orderId + "/approve").with(agent("agent1"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"comment\":\"ID checked\"}"))
@@ -88,7 +88,7 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
 
     @Test
     void rejectedOrderIsNeverSubmitted() throws Exception {
-        UUID orderId = heldOrder(null);
+        final UUID orderId = heldOrder(null);
 
         mvc.perform(post("/api/v1/orders/" + orderId + "/reject").with(agent("agent1"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Customer failed the credit check\"}"))
@@ -101,7 +101,7 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
 
     @Test
     void approvingAfterTheSlotHasPassedWarnsAndFlagsFulfilment() throws Exception {
-        UUID orderId = heldOrder(LocalDate.now().minusDays(1));
+        final UUID orderId = heldOrder(LocalDate.now().minusDays(1));
 
         mvc.perform(post("/api/v1/orders/" + orderId + "/approve").with(agent("agent1")))
                 .andExpect(status().isOk())
@@ -114,24 +114,25 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
     /** Repeated: the race is timing-dependent; it once exposed a MySQL deadlock (fixed with a row lock). */
     @org.junit.jupiter.api.RepeatedTest(10)
     void twoAgentsDecidingAtOnceGetOneWinnerAndOne409() throws Exception {
-        UUID orderId = heldOrder(null);
-        CountDownLatch start = new CountDownLatch(1);
+        final UUID orderId = heldOrder(null);
+        final CountDownLatch start = new CountDownLatch(1);
 
-        CompletableFuture<MvcResult> approve = CompletableFuture.supplyAsync(() -> decide(start,
+        final CompletableFuture<MvcResult> approve = CompletableFuture.supplyAsync(() -> decide(start,
                 post("/api/v1/orders/" + orderId + "/approve").with(agent("agent1"))));
-        CompletableFuture<MvcResult> reject = CompletableFuture.supplyAsync(() -> decide(start,
+        final CompletableFuture<MvcResult> reject = CompletableFuture.supplyAsync(() -> decide(start,
                 post("/api/v1/orders/" + orderId + "/reject").with(agent("agent2"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Duplicate of another order\"}")));
         start.countDown();
 
-        List<Integer> statuses = List.of(approve.join().getResponse().getStatus(), reject.join().getResponse().getStatus());
+        final List<Integer> statuses =
+                List.of(approve.join().getResponse().getStatus(), reject.join().getResponse().getStatus());
         assertThat(statuses).containsExactlyInAnyOrder(200, 409);
         assertThat(jdbc.queryForObject("select count(*) from order_status_history where order_id = ?", Long.class,
                 orderId.toString())).isEqualTo(2);
     }
 
-    private MvcResult decide(CountDownLatch start,
-                             org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request) {
+    private MvcResult decide(final CountDownLatch start,
+                             final org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder request) {
         try {
             start.await();
             return mvc.perform(request).andReturn();

@@ -28,14 +28,15 @@ class PlaceOrderRequestValidationTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
-    private Set<String> invalidFields(Object request) {
+    private Set<String> invalidFields(final Object request) {
         return validator.validate(request).stream()
                 .map(ConstraintViolation::getPropertyPath).map(Object::toString)
                 .collect(java.util.stream.Collectors.toSet());
     }
 
-    private static CustomerRequest customer(String firstName, String mobile, IdentityDocumentRequest document) {
-        var c = TestOrders.customer();
+    private static CustomerRequest customer(final String firstName, final String mobile,
+                                            final IdentityDocumentRequest document) {
+        final var c = TestOrders.customer();
         return new CustomerRequest(firstName, c.lastName(), c.dateOfBirth(), c.email(), mobile, document, c.address());
     }
 
@@ -52,20 +53,20 @@ class PlaceOrderRequestValidationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"Ċensu", "Ġorġ", "Ħelena", "Żaren", "Mary-Anne", "D'Amato"})
-    void namesAcceptMalteseLettersApostrophesAndHyphens(String name) {
+    void namesAcceptMalteseLettersApostrophesAndHyphens(final String name) {
         assertThat(invalidFields(customer(name, "+35679123456", TestOrders.customer().identityDocument()))).isEmpty();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"Maria1", "<script>", " Maria"})
-    void namesRejectDigitsAndMarkup(String name) {
+    void namesRejectDigitsAndMarkup(final String name) {
         assertThat(invalidFields(customer(name, "+35679123456", TestOrders.customer().identityDocument())))
                 .containsExactly("firstName");
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"79123456", "+0035679123456", "+356 7912 3456"})
-    void mobileMustBeE164(String mobile) {
+    void mobileMustBeE164(final String mobile) {
         assertThat(invalidFields(customer("Maria", mobile, TestOrders.customer().identityDocument())))
                 .containsExactly("mobileNumber");
     }
@@ -84,7 +85,7 @@ class PlaceOrderRequestValidationTest {
 
     @Test
     void installationAddressIsRequiredOnlyWithoutUseCustomerAddress() {
-        LocalDate date = LocalDate.of(2026, 11, 9);
+        final LocalDate date = LocalDate.of(2026, 11, 9);
         assertThat(invalidFields(new InstallationRequest(false, null, date, TimeSlot.MORNING))).containsExactly("address");
         assertThat(invalidFields(new InstallationRequest(true, TestOrders.address(), date, TimeSlot.MORNING)))
                 .containsExactly("address");
@@ -93,9 +94,9 @@ class PlaceOrderRequestValidationTest {
 
     @Test
     void omittedUseCustomerAddressFollowsWhetherAnAddressIsGiven() {
-        LocalDate date = LocalDate.of(2026, 11, 9);
-        var withoutAddress = new InstallationRequest(null, null, date, TimeSlot.MORNING);
-        var withAddress = new InstallationRequest(null, TestOrders.address(), date, TimeSlot.MORNING);
+        final LocalDate date = LocalDate.of(2026, 11, 9);
+        final var withoutAddress = new InstallationRequest(null, null, date, TimeSlot.MORNING);
+        final var withAddress = new InstallationRequest(null, TestOrders.address(), date, TimeSlot.MORNING);
 
         assertThat(invalidFields(withoutAddress)).isEmpty();
         assertThat(withoutAddress.usesCustomerAddress()).isTrue();
@@ -105,9 +106,9 @@ class PlaceOrderRequestValidationTest {
 
     @Test
     void productsMayNotRepeatAndAtMostFourItems() {
-        var duplicate = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of(
+        final var duplicate = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of(
                 new ItemRequest(Product.MOBILE, "MOBILE_PREPAID"), new ItemRequest(Product.MOBILE, "MOBILE_POSTPAID")));
-        var empty = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of());
+        final var empty = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of());
 
         assertThat(invalidFields(duplicate)).containsExactly("items");
         assertThat(invalidFields(empty)).containsExactly("items");

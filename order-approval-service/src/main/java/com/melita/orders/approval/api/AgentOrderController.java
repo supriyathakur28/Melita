@@ -29,41 +29,43 @@ class AgentOrderController {
 
     private final AgentOrderService service;
 
-    AgentOrderController(AgentOrderService service) {
+    AgentOrderController(final AgentOrderService service) {
         this.service = service;
     }
 
     @Operation(summary = "List orders, e.g. those waiting for approval")
     @GetMapping
-    PagedModel<OrderViews.Summary> list(@RequestParam(required = false) OrderStatus status,
-                                        @PageableDefault(size = 20, sort = "receivedAt") Pageable pageable) {
-        for (Sort.Order order : pageable.getSort()) {
-            if (!SORTABLE.contains(order.getProperty())) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SORT",
-                        "Sorting is allowed by " + SORTABLE + " only");
-            }
+    PagedModel<OrderViews.Summary> list(@RequestParam(required = false) final OrderStatus status,
+                                        @PageableDefault(size = 20, sort = "receivedAt") final Pageable pageable) {
+        final boolean unsortable = pageable.getSort().stream()
+                .map(Sort.Order::getProperty)
+                .anyMatch(property -> !SORTABLE.contains(property));
+        if (unsortable) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_SORT",
+                    "Sorting is allowed by " + SORTABLE + " only");
         }
         return new PagedModel<>(service.list(status, pageable));
     }
 
     @Operation(summary = "Order detail with its history; the ID number is masked")
     @GetMapping("/{orderId}")
-    OrderViews.Detail get(@PathVariable UUID orderId) {
+    OrderViews.Detail get(@PathVariable final UUID orderId) {
         return service.get(orderId);
     }
 
     @Operation(summary = "Approve an order that is waiting for approval")
     @PostMapping("/{orderId}/approve")
-    OrderViews.Detail approve(@PathVariable UUID orderId,
-                              @Valid @RequestBody(required = false) DecisionRequests.Approve request,
-                              @CurrentAgent String agent) {
+    OrderViews.Detail approve(@PathVariable final UUID orderId,
+                              @Valid @RequestBody(required = false) final DecisionRequests.Approve request,
+                              @CurrentAgent final String agent) {
         return service.approve(orderId, agent, request == null ? null : request.comment());
     }
 
     @Operation(summary = "Reject an order that is waiting for approval; a reason is required")
     @PostMapping("/{orderId}/reject")
-    OrderViews.Detail reject(@PathVariable UUID orderId, @Valid @RequestBody DecisionRequests.Reject request,
-                             @CurrentAgent String agent) {
+    OrderViews.Detail reject(@PathVariable final UUID orderId,
+                             @Valid @RequestBody final DecisionRequests.Reject request,
+                             @CurrentAgent final String agent) {
         return service.reject(orderId, agent, request.reason());
     }
 }

@@ -35,8 +35,8 @@ public class OrderIngestionService {
     private final OutboxWriter outbox;
     private final Clock clock;
 
-    public OrderIngestionService(InboxGuard inbox, CustomerOrderRepository orders, ApprovalPolicy approvalPolicy,
-                                 OutboxWriter outbox, Clock clock) {
+    public OrderIngestionService(final InboxGuard inbox, final CustomerOrderRepository orders,
+                                 final ApprovalPolicy approvalPolicy, final OutboxWriter outbox, final Clock clock) {
         this.inbox = inbox;
         this.orders = orders;
         this.approvalPolicy = approvalPolicy;
@@ -45,16 +45,16 @@ public class OrderIngestionService {
     }
 
     @Transactional
-    public void ingest(EventEnvelope<OrderAccepted> event) {
-        OrderAccepted accepted = event.data();
+    public void ingest(final EventEnvelope<OrderAccepted> event) {
+        final OrderAccepted accepted = event.data();
         if (!inbox.firstDelivery(event.eventId().toString()) || orders.existsById(accepted.orderId())) {
             log.info("Duplicate delivery of event {} for order {}, skipped", event.eventId(), accepted.orderId());
             return;
         }
 
-        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-        List<String> reasons = approvalPolicy.reasonsFor(accepted.items());
-        CustomerOrder order = CustomerOrder.receive(accepted.orderId(), accepted.partnerId(),
+        final Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        final List<String> reasons = approvalPolicy.reasonsFor(accepted.items());
+        final CustomerOrder order = CustomerOrder.receive(accepted.orderId(), accepted.partnerId(),
                 accepted.externalReference(), customer(accepted.customer()), installation(accepted.installation()),
                 accepted.items().stream()
                         .map(i -> new CustomerOrder.NewItem(i.product(), i.packageCode(), i.packageName())).toList(),
@@ -68,16 +68,16 @@ public class OrderIngestionService {
         log.info("Stored order {} as {}", order.getId(), order.getStatus());
     }
 
-    private static CustomerDetails customer(OrderAccepted.Customer c) {
+    private static CustomerDetails customer(final OrderAccepted.Customer c) {
         return new CustomerDetails(c.firstName(), c.lastName(), c.dateOfBirth(), c.email(), c.mobileNumber(),
                 c.identityDocument().type(), c.identityDocument().number(), address(c.address()));
     }
 
-    private static Installation installation(OrderAccepted.Installation i) {
+    private static Installation installation(final OrderAccepted.Installation i) {
         return i == null ? null : new Installation(i.preferredDate(), i.timeSlot(), address(i.address()));
     }
 
-    private static Address address(OrderAccepted.Address a) {
+    private static Address address(final OrderAccepted.Address a) {
         return new Address(a.line1(), a.line2(), a.locality(), a.postcode());
     }
 }

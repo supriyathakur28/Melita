@@ -25,11 +25,12 @@ public @interface ValidInstallationAddress {
 
     class Validator implements ConstraintValidator<ValidInstallationAddress, PlaceOrderRequest.InstallationRequest> {
         @Override
-        public boolean isValid(PlaceOrderRequest.InstallationRequest installation, ConstraintValidatorContext context) {
+        public boolean isValid(final PlaceOrderRequest.InstallationRequest installation,
+                               final ConstraintValidatorContext context) {
             if (installation == null) {
                 return true;
             }
-            boolean valid = installation.usesCustomerAddress() == (installation.address() == null);
+            final boolean valid = installation.usesCustomerAddress() == (installation.address() == null);
             if (!valid) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(context.getDefaultConstraintMessageTemplate())

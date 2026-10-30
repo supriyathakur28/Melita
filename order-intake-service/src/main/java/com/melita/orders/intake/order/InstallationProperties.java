@@ -31,7 +31,7 @@ public record InstallationProperties(
         zone = zone == null ? ZoneId.of("Europe/Malta") : zone;
     }
 
-    public boolean isWorkingDay(LocalDate date) {
+    public boolean isWorkingDay(final LocalDate date) {
         return !excludedDays.contains(date.getDayOfWeek()) && !publicHolidays.contains(date);
     }
 }

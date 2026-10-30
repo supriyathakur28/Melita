@@ -13,7 +13,8 @@ public class WebSupportConfiguration {
 
     @Bean
     FilterRegistrationBean<RequestIdFilter> requestIdFilter() {
-        FilterRegistrationBean<RequestIdFilter> registration = new FilterRegistrationBean<>(new RequestIdFilter());
+        final FilterRegistrationBean<RequestIdFilter> registration =
+                new FilterRegistrationBean<>(new RequestIdFilter());
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
         return registration;
     }

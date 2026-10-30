@@ -28,7 +28,7 @@ class OrderController {
 
     private final OrderIntakeService service;
 
-    OrderController(OrderIntakeService service) {
+    OrderController(final OrderIntakeService service) {
         this.service = service;
     }
 
@@ -37,13 +37,13 @@ class OrderController {
     @PostMapping
     ResponseEntity<OrderReceipt> place(
             @Parameter(description = "8-64 characters, letters, digits, '-' or '_'; unique per order attempt")
-            @RequestHeader(IdempotencyKey.HEADER) @IdempotencyKey String idempotencyKey,
-            @Valid @RequestBody PlaceOrderRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
-        PlacementResult result = service.place(PartnerIds.from(jwt), idempotencyKey, request);
-        var location = ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{id}")
+            @RequestHeader(IdempotencyKey.HEADER) @IdempotencyKey final String idempotencyKey,
+            @Valid @RequestBody final PlaceOrderRequest request,
+            @AuthenticationPrincipal final Jwt jwt) {
+        final PlacementResult result = service.place(PartnerIds.from(jwt), idempotencyKey, request);
+        final var location = ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{id}")
                 .buildAndExpand(result.receipt().orderId()).toUri();
-        var response = ResponseEntity.created(location);
+        final var response = ResponseEntity.created(location);
         if (result.replayed()) {
             response.header(REPLAYED, "true");
         }
@@ -52,7 +52,7 @@ class OrderController {
 
     @Operation(summary = "Read one of your own orders")
     @GetMapping("/{orderId}")
-    OrderReceipt find(@PathVariable UUID orderId, @AuthenticationPrincipal Jwt jwt) {
+    OrderReceipt find(@PathVariable final UUID orderId, @AuthenticationPrincipal final Jwt jwt) {
         return service.find(PartnerIds.from(jwt), orderId);
     }
 }

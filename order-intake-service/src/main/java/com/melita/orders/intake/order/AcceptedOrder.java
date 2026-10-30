@@ -48,7 +48,8 @@ public class AcceptedOrder implements Persistable<UUID> {
     protected AcceptedOrder() {
     }
 
-    public AcceptedOrder(UUID id, String partnerId, String externalReference, Instant acceptedAt) {
+    public AcceptedOrder(final UUID id, final String partnerId, final String externalReference,
+                         final Instant acceptedAt) {
         this.id = id;
         this.partnerId = partnerId;
         this.externalReference = externalReference;

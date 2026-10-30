@@ -41,8 +41,8 @@ public class FulfilmentOrderService {
     private final TransactionTemplate transaction;
     private final Clock clock;
 
-    public FulfilmentOrderService(FulfilmentOrderRepository orders, RequestHasher hasher,
-                                  PlatformTransactionManager transactionManager, Clock clock) {
+    public FulfilmentOrderService(final FulfilmentOrderRepository orders, final RequestHasher hasher,
+                                  final PlatformTransactionManager transactionManager, final Clock clock) {
         this.orders = orders;
         this.hasher = hasher;
         this.transaction = new TransactionTemplate(transactionManager);
@@ -50,14 +50,15 @@ public class FulfilmentOrderService {
     }
 
     @PreAuthorize("hasAuthority('SCOPE_fulfilment:submit')")
-    public SubmissionResult submit(String idempotencyKey, FulfilmentOrderRequest request) {
-        String requestHash = hasher.hash(request);
-        Optional<SubmissionResult> earlier = replay(idempotencyKey, requestHash);
+    public SubmissionResult submit(final String idempotencyKey, final FulfilmentOrderRequest request) {
+        final String requestHash = hasher.hash(request);
+        final Optional<SubmissionResult> earlier = replay(idempotencyKey, requestHash);
         if (earlier.isPresent()) {
             return earlier.get();
         }
         try {
-            FulfilmentOrder order = transaction.execute(status -> orders.saveAndFlush(create(idempotencyKey, requestHash, request)));
+            final FulfilmentOrder order =
+                    transaction.execute(status -> orders.saveAndFlush(create(idempotencyKey, requestHash, request)));
             log.info("Scheduled fulfilment {} for order {}", order.getFulfilmentReference(), order.getOrderId());
             return new SubmissionResult(response(order), false);
         } catch (DataIntegrityViolationException duplicate) {
@@ -72,13 +73,13 @@ public class FulfilmentOrderService {
     }
 
     @PreAuthorize("hasAuthority('SCOPE_fulfilment:read')")
-    public FulfilmentOrderView find(String fulfilmentReference) {
+    public FulfilmentOrderView find(final String fulfilmentReference) {
         return transaction.execute(status -> orders.findWithItemsByFulfilmentReference(fulfilmentReference)
                 .map(FulfilmentOrderService::view)
                 .orElseThrow(() -> ApiException.notFound("Fulfilment order")));
     }
 
-    private Optional<SubmissionResult> replay(String idempotencyKey, String requestHash) {
+    private Optional<SubmissionResult> replay(final String idempotencyKey, final String requestHash) {
         return transaction.execute(status -> orders.findByIdempotencyKey(idempotencyKey).map(existing -> {
             if (!existing.getRequestHash().equals(requestHash)) {
                 throw ApiException.conflict("IDEMPOTENCY_KEY_REUSED",
@@ -88,14 +89,15 @@ public class FulfilmentOrderService {
         }));
     }
 
-    private FulfilmentOrder create(String idempotencyKey, String requestHash, FulfilmentOrderRequest request) {
-        var c = request.customer();
-        var customer = new Customer(c.firstName(), c.lastName(), c.dateOfBirth(), c.email(), c.mobileNumber(),
+    private FulfilmentOrder create(final String idempotencyKey, final String requestHash,
+                                   final FulfilmentOrderRequest request) {
+        final var c = request.customer();
+        final var customer = new Customer(c.firstName(), c.lastName(), c.dateOfBirth(), c.email(), c.mobileNumber(),
                 c.idDocumentType(), c.idDocumentNumber(), address(c.address()));
-        Installation installation = request.installation() == null ? null : new Installation(
+        final Installation installation = request.installation() == null ? null : new Installation(
                 request.installation().preferredDate(), request.installation().timeSlot(),
                 address(request.installation().address()), request.installation().preferredSlotExpired());
-        var items = request.items().stream()
+        final var items = request.items().stream()
                 .map(i -> new FulfilmentOrder.NewItem(i.product(), i.packageCode(), i.packageName()))
                 .toList();
         return FulfilmentOrder.create(newReference(), idempotencyKey, requestHash, request.orderId(),
@@ -103,24 +105,24 @@ public class FulfilmentOrderService {
                 clock.instant().truncatedTo(ChronoUnit.MICROS));
     }
 
-    private static Address address(FulfilmentOrderRequest.Address a) {
+    private static Address address(final FulfilmentOrderRequest.Address a) {
         return new Address(a.line1(), a.line2(), a.locality(), a.postcode());
     }
 
     /** {@code FUL-} plus 10 random hex characters: short enough to read out over the phone. */
     private static String newReference() {
-        byte[] bytes = new byte[5];
+        final byte[] bytes = new byte[5];
         RANDOM.nextBytes(bytes);
         return "FUL-" + HexFormat.of().withUpperCase().formatHex(bytes);
     }
 
-    private static FulfilmentOrderResponse response(FulfilmentOrder order) {
+    private static FulfilmentOrderResponse response(final FulfilmentOrder order) {
         return new FulfilmentOrderResponse(order.getFulfilmentReference(), order.getOrderId(), order.getStatus(),
                 order.getReceivedAt());
     }
 
-    private static FulfilmentOrderView view(FulfilmentOrder order) {
-        Installation i = order.getInstallation();
+    private static FulfilmentOrderView view(final FulfilmentOrder order) {
+        final Installation i = order.getInstallation();
         return new FulfilmentOrderView(order.getFulfilmentReference(), order.getOrderId(), order.getPartnerId(),
                 order.getExternalReference(), order.getStatus(),
                 order.getCustomer().firstName() + " " + order.getCustomer().lastName(),

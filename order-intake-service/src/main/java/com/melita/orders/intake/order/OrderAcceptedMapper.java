@@ -13,24 +13,24 @@ final class OrderAcceptedMapper {
     private OrderAcceptedMapper() {
     }
 
-    static OrderAccepted toEvent(UUID orderId, String partnerId, PlaceOrderRequest request, Catalogue catalogue,
-                                 Instant acceptedAt) {
-        PlaceOrderRequest.CustomerRequest c = request.customer();
-        OrderAccepted.Address customerAddress = address(c.address());
-        var customer = new OrderAccepted.Customer(c.firstName(), c.lastName(), c.dateOfBirth(), c.email(),
+    static OrderAccepted toEvent(final UUID orderId, final String partnerId, final PlaceOrderRequest request,
+                                 final Catalogue catalogue, final Instant acceptedAt) {
+        final PlaceOrderRequest.CustomerRequest c = request.customer();
+        final OrderAccepted.Address customerAddress = address(c.address());
+        final var customer = new OrderAccepted.Customer(c.firstName(), c.lastName(), c.dateOfBirth(), c.email(),
                 c.mobileNumber(),
                 new OrderAccepted.IdentityDocument(c.identityDocument().type().name(), c.identityDocument().number()),
                 customerAddress);
 
         OrderAccepted.Installation installation = null;
         if (request.installation() != null) {
-            PlaceOrderRequest.InstallationRequest i = request.installation();
+            final PlaceOrderRequest.InstallationRequest i = request.installation();
             installation = new OrderAccepted.Installation(
                     i.usesCustomerAddress() ? customerAddress : address(i.address()),
                     i.preferredDate(), i.timeSlot().name());
         }
 
-        var items = request.items().stream()
+        final var items = request.items().stream()
                 .map(item -> new OrderAccepted.Item(item.product().name(), item.packageCode(),
                         catalogue.findPackage(item.packageCode()).orElseThrow().pkg().name()))
                 .toList();
@@ -39,7 +39,7 @@ final class OrderAcceptedMapper {
                 acceptedAt);
     }
 
-    private static OrderAccepted.Address address(PlaceOrderRequest.AddressRequest a) {
+    private static OrderAccepted.Address address(final PlaceOrderRequest.AddressRequest a) {
         return new OrderAccepted.Address(a.line1(), a.line2(), a.locality(), a.postcode());
     }
 }

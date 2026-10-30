@@ -48,7 +48,7 @@ class ApprovalPolicyRefreshIT extends ApprovalIntegrationTest {
         refresher.refresh();
 
         assertThat(policy.rules().requiredPackages()).containsExactly("MOBILE_PREPAID");
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")), null));
         await().atMost(Duration.ofSeconds(10)).until(() -> orders.findById(orderId)
                 .map(o -> o.getStatus() == OrderStatus.PENDING_APPROVAL).orElse(false));

@@ -59,7 +59,8 @@ public class Notification {
     protected Notification() {
     }
 
-    Notification(String eventId, String template, String orderId, String recipient, Instant now) {
+    Notification(final String eventId, final String template, final String orderId, final String recipient,
+                 final Instant now) {
         this.eventId = eventId;
         this.template = template;
         this.orderId = orderId;
@@ -68,7 +69,7 @@ public class Notification {
         this.createdAt = now;
     }
 
-    void sent(Instant now) {
+    void sent(final Instant now) {
         status = Status.SENT;
         sentAt = now;
         claimedUntil = null;
@@ -76,7 +77,7 @@ public class Notification {
     }
 
     /** The send failed: give the lease back so the listener's retry can claim the row again. */
-    void released(String error) {
+    void released(final String error) {
         if (status == Status.SENDING) {
             status = Status.PENDING;
             claimedUntil = null;
@@ -84,7 +85,7 @@ public class Notification {
         }
     }
 
-    void failed(String error) {
+    void failed(final String error) {
         if (status != Status.SENT) {
             status = Status.FAILED;
             claimedUntil = null;
@@ -92,7 +93,7 @@ public class Notification {
         }
     }
 
-    private static String truncate(String error) {
+    private static String truncate(final String error) {
         return error == null || error.length() <= 255 ? error : error.substring(0, 255);
     }
 

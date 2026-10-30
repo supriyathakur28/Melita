@@ -79,7 +79,7 @@ class MessagingSupportIT {
 
     @Test
     void relayPublishesInCommitOrderMarksRowsAndClearsPayload() {
-        List<EventEnvelope<Map<String, String>>> events = new ArrayList<>();
+        final List<EventEnvelope<Map<String, String>>> events = new ArrayList<>();
         for (int i = 1; i <= 3; i++) {
             events.add(EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req-" + i, Instant.now(), Map.of("n", "" + i)));
         }
@@ -87,10 +87,10 @@ class MessagingSupportIT {
 
         assertThat(outboxRelay.publishPending()).isEqualTo(3);
 
-        for (EventEnvelope<Map<String, String>> event : events) {
-            Message received = rabbitTemplate.receive(MessagingTestApplication.RELAY_QUEUE, 5_000);
+        for (final EventEnvelope<Map<String, String>> event : events) {
+            final Message received = rabbitTemplate.receive(MessagingTestApplication.RELAY_QUEUE, 5_000);
             assertThat(received).isNotNull();
-            MessageProperties properties = received.getMessageProperties();
+            final MessageProperties properties = received.getMessageProperties();
             assertThat(properties.getMessageId()).isEqualTo(event.eventId().toString());
             assertThat(properties.getType()).isEqualTo(OrderEvents.ORDER_ACCEPTED);
             assertThat((String) properties.getHeader(OrderEvents.CORRELATION_HEADER)).isEqualTo(event.correlationId());
@@ -137,8 +137,8 @@ class MessagingSupportIT {
 
     @Test
     void inboxAcceptsAMessageIdOnlyOnce() {
-        Boolean first = tx.execute(status -> inboxGuard.firstDelivery("message-1"));
-        Boolean second = tx.execute(status -> inboxGuard.firstDelivery("message-1"));
+        final Boolean first = tx.execute(status -> inboxGuard.firstDelivery("message-1"));
+        final Boolean second = tx.execute(status -> inboxGuard.firstDelivery("message-1"));
 
         assertThat(first).isTrue();
         assertThat(second).isFalse();
@@ -148,7 +148,7 @@ class MessagingSupportIT {
     void poisonMessageGoesStraightToTheDeadLetterQueue() {
         send("poison", "req-poison");
 
-        Message dead = rabbitTemplate.receive(MessagingTestApplication.LISTENER_QUEUE + ".dlq", 10_000);
+        final Message dead = rabbitTemplate.receive(MessagingTestApplication.LISTENER_QUEUE + ".dlq", 10_000);
         assertThat(dead).isNotNull();
         assertThat(new String(dead.getBody(), StandardCharsets.UTF_8)).isEqualTo("poison");
         assertThat(listener.invocations.get("poison").get()).isEqualTo(1);
@@ -169,7 +169,7 @@ class MessagingSupportIT {
     void persistentFailureIsRetriedThenDeadLettered() {
         send("always-fail", "req-fail");
 
-        Message dead = rabbitTemplate.receive(MessagingTestApplication.LISTENER_QUEUE + ".dlq", 10_000);
+        final Message dead = rabbitTemplate.receive(MessagingTestApplication.LISTENER_QUEUE + ".dlq", 10_000);
         assertThat(dead).isNotNull();
         assertThat(listener.invocations.get("always-fail").get()).isEqualTo(3);
         assertThat(failureCallback.deadLettered).contains("always-fail");
@@ -177,18 +177,19 @@ class MessagingSupportIT {
 
     @Test
     @ExtendWith(OutputCaptureExtension.class)
-    void deadLetteringNeverLogsTheMessageBody(CapturedOutput output) {
-        Message message = MessageBuilder.withBody("always-fail PII-MARKER-123456M".getBytes(StandardCharsets.UTF_8))
+    void deadLetteringNeverLogsTheMessageBody(final CapturedOutput output) {
+        final Message message =
+                MessageBuilder.withBody("always-fail PII-MARKER-123456M".getBytes(StandardCharsets.UTF_8))
                 .setMessageId("msg-pii-test").setContentType("application/json").build();
         rabbitTemplate.send(OrderEvents.EXCHANGE, MessagingTestApplication.LISTENER_ROUTING_KEY, message);
 
-        Message dead = rabbitTemplate.receive(MessagingTestApplication.LISTENER_QUEUE + ".dlq", 10_000);
+        final Message dead = rabbitTemplate.receive(MessagingTestApplication.LISTENER_QUEUE + ".dlq", 10_000);
         assertThat(dead).isNotNull();
         assertThat(output.getAll()).contains("Dead-lettering message").doesNotContain("PII-MARKER");
     }
 
-    private void send(String body, String correlationId) {
-        Message message = MessageBuilder.withBody(body.getBytes(StandardCharsets.UTF_8))
+    private void send(final String body, final String correlationId) {
+        final Message message = MessageBuilder.withBody(body.getBytes(StandardCharsets.UTF_8))
                 .setHeader(OrderEvents.CORRELATION_HEADER, correlationId)
                 .setMessageId(body)
                 .build();

@@ -20,8 +20,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ProblemAuthenticationEntryPoint entryPoint,
-                                            ProblemAccessDeniedHandler deniedHandler) {
+    SecurityFilterChain securityFilterChain(final HttpSecurity http, final ProblemAuthenticationEntryPoint entryPoint,
+                                            final ProblemAccessDeniedHandler deniedHandler) {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

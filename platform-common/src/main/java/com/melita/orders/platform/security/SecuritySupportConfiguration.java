@@ -12,12 +12,12 @@ import tools.jackson.databind.json.JsonMapper;
 public class SecuritySupportConfiguration {
 
     @Bean
-    ProblemAuthenticationEntryPoint problemAuthenticationEntryPoint(JsonMapper jsonMapper) {
+    ProblemAuthenticationEntryPoint problemAuthenticationEntryPoint(final JsonMapper jsonMapper) {
         return new ProblemAuthenticationEntryPoint(jsonMapper);
     }
 
     @Bean
-    ProblemAccessDeniedHandler problemAccessDeniedHandler(JsonMapper jsonMapper) {
+    ProblemAccessDeniedHandler problemAccessDeniedHandler(final JsonMapper jsonMapper) {
         return new ProblemAccessDeniedHandler(jsonMapper);
     }
 }

@@ -22,18 +22,14 @@ public record Catalogue(List<ProductEntry> products) {
     public record Offer(ProductEntry product, PackageEntry pkg) {
     }
 
-    public Optional<Offer> findPackage(String packageCode) {
-        for (ProductEntry product : products) {
-            for (PackageEntry pkg : product.packages()) {
-                if (pkg.code().equals(packageCode)) {
-                    return Optional.of(new Offer(product, pkg));
-                }
-            }
-        }
-        return Optional.empty();
+    public Optional<Offer> findPackage(final String packageCode) {
+        return products.stream()
+                .flatMap(product -> product.packages().stream().map(pkg -> new Offer(product, pkg)))
+                .filter(offer -> offer.pkg().code().equals(packageCode))
+                .findFirst();
     }
 
-    public Optional<ProductEntry> findProduct(String productCode) {
+    public Optional<ProductEntry> findProduct(final String productCode) {
         return products.stream().filter(p -> p.code().equals(productCode)).findFirst();
     }
 

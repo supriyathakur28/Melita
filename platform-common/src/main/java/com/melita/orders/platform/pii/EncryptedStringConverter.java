@@ -13,17 +13,17 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
 
     private final PiiCipher cipher;
 
-    public EncryptedStringConverter(PiiCipher cipher) {
+    public EncryptedStringConverter(final PiiCipher cipher) {
         this.cipher = cipher;
     }
 
     @Override
-    public String convertToDatabaseColumn(String attribute) {
+    public String convertToDatabaseColumn(final String attribute) {
         return cipher.encrypt(attribute);
     }
 
     @Override
-    public String convertToEntityAttribute(String column) {
+    public String convertToEntityAttribute(final String column) {
         return cipher.decrypt(column);
     }
 }

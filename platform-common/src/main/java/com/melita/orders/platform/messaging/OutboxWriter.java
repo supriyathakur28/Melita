@@ -17,13 +17,13 @@ public class OutboxWriter {
     private final JdbcTemplate jdbc;
     private final JsonMapper jsonMapper;
 
-    public OutboxWriter(JdbcTemplate jdbc, JsonMapper jsonMapper) {
+    public OutboxWriter(final JdbcTemplate jdbc, final JsonMapper jsonMapper) {
         this.jdbc = jdbc;
         this.jsonMapper = jsonMapper;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void append(EventEnvelope<?> event) {
+    public void append(final EventEnvelope<?> event) {
         jdbc.update("""
                         insert into outbox_event (event_id, event_type, routing_key, correlation_id, payload, created_at)
                         values (?, ?, ?, ?, ?, ?)

@@ -12,7 +12,8 @@ final class ProblemResponses {
     private ProblemResponses() {
     }
 
-    static void write(HttpServletResponse response, JsonMapper jsonMapper, ProblemDetail problem) throws IOException {
+    static void write(final HttpServletResponse response, final JsonMapper jsonMapper, final ProblemDetail problem
+                     ) throws IOException {
         response.setStatus(problem.getStatus());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         jsonMapper.writeValue(response.getOutputStream(), problem);

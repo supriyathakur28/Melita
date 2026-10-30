@@ -38,9 +38,9 @@ public class NotificationService {
     private final TransactionTemplate transaction;
     private final Clock clock;
 
-    public NotificationService(NotificationRepository notifications, JavaMailSender mailSender,
-                               NotificationProperties properties, PlatformTransactionManager transactionManager,
-                               Clock clock) {
+    public NotificationService(final NotificationRepository notifications, final JavaMailSender mailSender,
+                               final NotificationProperties properties,
+                               final PlatformTransactionManager transactionManager, final Clock clock) {
         this.notifications = notifications;
         this.mailSender = mailSender;
         this.properties = properties;
@@ -48,8 +48,8 @@ public class NotificationService {
         this.clock = clock;
     }
 
-    public void send(Email email) {
-        Optional<Long> claimed = claim(email);
+    public void send(final Email email) {
+        final Optional<Long> claimed = claim(email);
         if (claimed.isEmpty()) {
             log.info("Email {} for event {} was already sent or is being sent, skipped", email.template(), email.eventId());
             return;
@@ -67,13 +67,13 @@ public class NotificationService {
     }
 
     /** Marks every email of a dead-lettered event as FAILED, so it shows up in the failed view. */
-    public void markFailed(String eventId, String error) {
+    public void markFailed(final String eventId, final String error) {
         transaction.executeWithoutResult(status ->
                 notifications.findByEventId(eventId).forEach(n -> n.failed(error)));
     }
 
     /** @return the row to send, or empty if this email was already sent or another consumer holds the lease. */
-    private Optional<Long> claim(Email email) {
+    private Optional<Long> claim(final Email email) {
         try {
             return transaction.execute(status -> claimOrReuse(email));
         } catch (DataIntegrityViolationException concurrentClaim) {
@@ -81,20 +81,20 @@ public class NotificationService {
         }
     }
 
-    private Optional<Long> claimOrReuse(Email email) {
-        Notification notification = notifications.findByEventIdAndTemplate(email.eventId(), email.template())
+    private Optional<Long> claimOrReuse(final Email email) {
+        final Notification notification = notifications.findByEventIdAndTemplate(email.eventId(), email.template())
                 .orElseGet(() -> notifications.saveAndFlush(new Notification(email.eventId(), email.template(),
                         email.orderId(), properties.agentsMailbox(), clock.instant())));
-        Instant now = clock.instant();
+        final Instant now = clock.instant();
         return notifications.claim(notification.getId(), now, now.plus(LEASE)) == 1
                 ? Optional.of(notification.getId())
                 : Optional.empty();
     }
 
-    private MimeMessage mime(Email email) {
+    private MimeMessage mime(final Email email) {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
+            final MimeMessage message = mailSender.createMimeMessage();
+            final MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
             helper.setFrom(properties.from());
             helper.setTo(properties.agentsMailbox());
             helper.setSubject(email.subject());

@@ -49,9 +49,10 @@ public class OrderIntakeService {
     private final TransactionTemplate transaction;
     private final Clock clock;
 
-    public OrderIntakeService(CatalogueService catalogueService, OrderRules rules, RequestHasher hasher,
-                              AcceptedOrderRepository orders, IdempotencyRecordRepository idempotencyRecords,
-                              OutboxWriter outbox, PlatformTransactionManager transactionManager, Clock clock) {
+    public OrderIntakeService(final CatalogueService catalogueService, final OrderRules rules,
+                              final RequestHasher hasher, final AcceptedOrderRepository orders,
+                              final IdempotencyRecordRepository idempotencyRecords, final OutboxWriter outbox,
+                              final PlatformTransactionManager transactionManager, final Clock clock) {
         this.catalogueService = catalogueService;
         this.rules = rules;
         this.hasher = hasher;
@@ -63,25 +64,26 @@ public class OrderIntakeService {
     }
 
     @PreAuthorize("hasAuthority('SCOPE_orders:write')")
-    public PlacementResult place(String partnerId, String idempotencyKey, PlaceOrderRequest request) {
-        String requestHash = hasher.hash(request);
-        var key = new IdempotencyRecord.Key(partnerId, idempotencyKey);
+    public PlacementResult place(final String partnerId, final String idempotencyKey, final PlaceOrderRequest request) {
+        final String requestHash = hasher.hash(request);
+        final var key = new IdempotencyRecord.Key(partnerId, idempotencyKey);
 
         // A retry of a request that already succeeded is answered from the record, even if the catalogue
         // or the date rules have changed since.
-        Optional<PlacementResult> earlier = replay(key, requestHash);
+        final Optional<PlacementResult> earlier = replay(key, requestHash);
         if (earlier.isPresent()) {
             return earlier.get();
         }
 
-        Catalogue catalogue = catalogueService.current();
-        List<FieldViolation> violations = rules.check(request, catalogue);
+        final Catalogue catalogue = catalogueService.current();
+        final List<FieldViolation> violations = rules.check(request, catalogue);
         if (!violations.isEmpty()) {
             throw ApiException.businessRules(violations);
         }
 
         try {
-            OrderReceipt receipt = transaction.execute(status -> accept(partnerId, key, requestHash, request, catalogue));
+            final OrderReceipt receipt =
+                    transaction.execute(status -> accept(partnerId, key, requestHash, request, catalogue));
             log.info("Accepted order {} ({}) for partner {}", receipt.orderId(), receipt.externalReference(), partnerId);
             return new PlacementResult(receipt, false);
         } catch (DataIntegrityViolationException duplicate) {
@@ -90,7 +92,7 @@ public class OrderIntakeService {
     }
 
     @PreAuthorize("hasAuthority('SCOPE_orders:read')")
-    public OrderReceipt find(String partnerId, UUID orderId) {
+    public OrderReceipt find(final String partnerId, final UUID orderId) {
         return orders.findByIdAndPartnerId(orderId, partnerId)
                 .map(OrderIntakeService::receipt)
                 .orElseThrow(() -> ApiException.notFound("Order"));
@@ -98,17 +100,17 @@ public class OrderIntakeService {
 
     @Scheduled(cron = "${idempotency.purge.cron:0 30 3 * * *}")
     public void purgeExpiredIdempotencyRecords() {
-        Instant cutoff = clock.instant().minus(REPLAY_WINDOW);
-        Integer deleted = transaction.execute(status -> idempotencyRecords.deleteOlderThan(cutoff));
+        final Instant cutoff = clock.instant().minus(REPLAY_WINDOW);
+        final Integer deleted = transaction.execute(status -> idempotencyRecords.deleteOlderThan(cutoff));
         log.info("Purged {} idempotency records older than {}", deleted, cutoff);
     }
 
-    private OrderReceipt accept(String partnerId, IdempotencyRecord.Key key, String requestHash,
-                                PlaceOrderRequest request, Catalogue catalogue) {
+    private OrderReceipt accept(final String partnerId, final IdempotencyRecord.Key key, final String requestHash,
+                                final PlaceOrderRequest request, final Catalogue catalogue) {
         // DATETIME(6) stores microseconds: truncate so the response and a later replay are identical.
-        Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
-        UUID orderId = UUID.randomUUID();
-        AcceptedOrder order = orders.saveAndFlush(
+        final Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
+        final UUID orderId = UUID.randomUUID();
+        final AcceptedOrder order = orders.saveAndFlush(
                 new AcceptedOrder(orderId, partnerId, request.externalReference(), now));
         idempotencyRecords.saveAndFlush(new IdempotencyRecord(key, requestHash, orderId, now));
         outbox.append(EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, RequestIds.current(), now,
@@ -120,8 +122,9 @@ public class OrderIntakeService {
      * A unique key was violated: a concurrent request committed first. Re-read in a new transaction, checking
      * the idempotency record first, so a retried request is always replayed and never answered with a 409.
      */
-    private PlacementResult resolveDuplicate(IdempotencyRecord.Key key, String requestHash, String externalReference,
-                                             DataIntegrityViolationException duplicate) {
+    private PlacementResult resolveDuplicate(final IdempotencyRecord.Key key, final String requestHash,
+                                             final String externalReference,
+                                             final DataIntegrityViolationException duplicate) {
         return replay(key, requestHash)
                 .or(() -> orders.findByPartnerIdAndExternalReference(key.partnerId(), externalReference)
                         .map(existing -> {
@@ -132,18 +135,18 @@ public class OrderIntakeService {
                 .orElseThrow(() -> duplicate);
     }
 
-    private Optional<PlacementResult> replay(IdempotencyRecord.Key key, String requestHash) {
+    private Optional<PlacementResult> replay(final IdempotencyRecord.Key key, final String requestHash) {
         return transaction.execute(status -> idempotencyRecords.findById(key).map(record -> {
             if (!record.getRequestHash().equals(requestHash)) {
                 throw ApiException.unprocessable("IDEMPOTENCY_KEY_REUSED",
                         "This Idempotency-Key was already used with a different request body");
             }
-            AcceptedOrder order = orders.findById(record.getOrderId()).orElseThrow();
+            final AcceptedOrder order = orders.findById(record.getOrderId()).orElseThrow();
             return new PlacementResult(receipt(order), true);
         }));
     }
 
-    private static OrderReceipt receipt(AcceptedOrder order) {
+    private static OrderReceipt receipt(final AcceptedOrder order) {
         return new OrderReceipt(order.getId(), order.getExternalReference(), order.getStatus(), order.getAcceptedAt());
     }
 }

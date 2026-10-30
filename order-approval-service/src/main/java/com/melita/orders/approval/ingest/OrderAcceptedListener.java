@@ -22,29 +22,32 @@ class OrderAcceptedListener {
     private final OrderIngestionService ingestion;
     private final JsonMapper jsonMapper;
 
-    OrderAcceptedListener(OrderIngestionService ingestion, JsonMapper jsonMapper) {
+    OrderAcceptedListener(final OrderIngestionService ingestion, final JsonMapper jsonMapper) {
         this.ingestion = ingestion;
         this.jsonMapper = jsonMapper;
     }
 
     @RabbitListener(queues = QUEUE)
-    void onOrderAccepted(Message message) {
+    void onOrderAccepted(final Message message) {
         ingestion.ingest(read(message));
     }
 
-    private EventEnvelope<OrderAccepted> read(Message message) {
-        EventEnvelope<OrderAccepted> event;
-        try {
-            event = jsonMapper.readValue(message.getBody(), new TypeReference<>() { });
-        } catch (JacksonException | IllegalArgumentException | NullPointerException e) {
-            throw new PoisonMessageException("Unreadable order.accepted payload", e);
-        }
-        OrderAccepted order = event.data();
+    private EventEnvelope<OrderAccepted> read(final Message message) {
+        final EventEnvelope<OrderAccepted> event = parse(message);
+        final OrderAccepted order = event.data();
         if (event.schemaVersion() != EventEnvelope.CURRENT_SCHEMA_VERSION || order.orderId() == null
                 || order.customer() == null || order.customer().identityDocument() == null
                 || order.items() == null || order.items().isEmpty()) {
             throw new PoisonMessageException("order.accepted event " + event.eventId() + " is incomplete");
         }
         return event;
+    }
+
+    private EventEnvelope<OrderAccepted> parse(final Message message) {
+        try {
+            return jsonMapper.readValue(message.getBody(), new TypeReference<>() { });
+        } catch (JacksonException | IllegalArgumentException | NullPointerException e) {
+            throw new PoisonMessageException("Unreadable order.accepted payload", e);
+        }
     }
 }

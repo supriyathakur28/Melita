@@ -24,7 +24,7 @@ class EventContractTest {
     private final JsonMapper mapper = JsonMapper.builder().build();
 
     static Stream<Object> payloads() {
-        var item = new OrderAccepted.Item("INTERNET", "INTERNET_1GBPS", "Internet 1Gbps");
+        final var item = new OrderAccepted.Item("INTERNET", "INTERNET_1GBPS", "Internet 1Gbps");
         return Stream.of(
                 sampleAccepted(),
                 new OrderApprovalRequested(ORDER_ID, "ERP-1", List.of("PACKAGE:INTERNET_1GBPS"), List.of(item)),
@@ -35,8 +35,8 @@ class EventContractTest {
     }
 
     static OrderAccepted sampleAccepted() {
-        var address = new OrderAccepted.Address("12, Triq il-Kbira", null, "Mosta", "MST 1234");
-        var customer = new OrderAccepted.Customer("Maria", "Borg", LocalDate.of(1990, 4, 12),
+        final var address = new OrderAccepted.Address("12, Triq il-Kbira", null, "Mosta", "MST 1234");
+        final var customer = new OrderAccepted.Customer("Maria", "Borg", LocalDate.of(1990, 4, 12),
                 "maria.borg@example.com", "+35679123456",
                 new OrderAccepted.IdentityDocument("ID_CARD", "123456M"), address);
         return new OrderAccepted(ORDER_ID, "erp-partner", "ERP-1", customer,
@@ -46,11 +46,11 @@ class EventContractTest {
 
     @ParameterizedTest
     @MethodSource("payloads")
-    void everyEventSurvivesAJsonRoundTrip(Object payload) {
-        var envelope = EventEnvelope.of("test.event", "req-1", NOW, payload);
+    void everyEventSurvivesAJsonRoundTrip(final Object payload) {
+        final var envelope = EventEnvelope.of("test.event", "req-1", NOW, payload);
 
-        String json = mapper.writeValueAsString(envelope);
-        var read = mapper.readValue(json, mapper.getTypeFactory()
+        final String json = mapper.writeValueAsString(envelope);
+        final var read = mapper.readValue(json, mapper.getTypeFactory()
                 .constructParametricType(EventEnvelope.class, payload.getClass()));
 
         assertThat(read).isEqualTo(envelope);
@@ -58,21 +58,22 @@ class EventContractTest {
 
     @Test
     void consumersIgnoreFieldsTheyDoNotKnow() {
-        String json = """
+        final String json = """
                 {"eventId":"%s","eventType":"order.submitted","schemaVersion":1,
                  "occurredAt":"2026-10-29T10:15:30Z","correlationId":"req-1","addedLater":true,
                  "data":{"orderId":"%s","externalReference":"ERP-1","fulfilmentReference":"FUL-1",
                          "submittedAt":"2026-10-29T10:15:30Z","alsoNew":{"x":1}}}
                 """.formatted(UUID.randomUUID(), ORDER_ID);
 
-        EventEnvelope<OrderSubmitted> read = mapper.readValue(json, new TypeReference<>() { });
+        final EventEnvelope<OrderSubmitted> read = mapper.readValue(json, new TypeReference<>() {
+        });
 
         assertThat(read.data().fulfilmentReference()).isEqualTo("FUL-1");
     }
 
     @Test
     void datesAreWrittenAsIsoStrings() {
-        String json = mapper.writeValueAsString(sampleAccepted());
+        final String json = mapper.writeValueAsString(sampleAccepted());
 
         assertThat(json).contains("\"acceptedAt\":\"2026-10-29T10:15:30Z\"", "\"dateOfBirth\":\"1990-04-12\"");
     }
@@ -92,7 +93,7 @@ class EventContractTest {
         assertThat(OrderEvents.ALL).doesNotHaveDuplicates().hasSize(6);
     }
 
-    private static List<Class<?>> componentTypes(Class<?> type) {
+    private static List<Class<?>> componentTypes(final Class<?> type) {
         return Arrays.stream(type.getRecordComponents()).map(RecordComponent::getType).toList();
     }
 }

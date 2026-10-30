@@ -19,13 +19,13 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
     private final BearerTokenAuthenticationEntryPoint bearer = new BearerTokenAuthenticationEntryPoint();
     private final JsonMapper jsonMapper;
 
-    public ProblemAuthenticationEntryPoint(JsonMapper jsonMapper) {
+    public ProblemAuthenticationEntryPoint(final JsonMapper jsonMapper) {
         this.jsonMapper = jsonMapper;
     }
 
     @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response,
-                         AuthenticationException authException) throws IOException {
+    public void commence(final HttpServletRequest request, final HttpServletResponse response,
+                         final AuthenticationException authException) throws IOException {
         bearer.commence(request, response, authException);
         ProblemResponses.write(response, jsonMapper, SecurityProblems.unauthorized());
     }

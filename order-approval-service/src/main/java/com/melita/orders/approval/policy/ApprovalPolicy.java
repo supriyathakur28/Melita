@@ -8,8 +8,8 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -35,7 +35,7 @@ public class ApprovalPolicy {
 
     private final Rules rules;
 
-    public ApprovalPolicy(Environment environment) {
+    public ApprovalPolicy(final Environment environment) {
         this.rules = Binder.get(environment).bind("approval", Rules.class).orElse(new Rules(Set.of(), Set.of()));
         log.info("Approval policy: packages {}, products {}", rules.requiredPackages(), rules.requiredProducts());
     }
@@ -45,15 +45,21 @@ public class ApprovalPolicy {
     }
 
     /** @return the reasons the order must be approved, e.g. {@code PACKAGE:MOBILE_POSTPAID}; empty if none. */
-    public List<String> reasonsFor(List<OrderAccepted.Item> items) {
-        List<String> reasons = new ArrayList<>();
-        for (OrderAccepted.Item item : items) {
-            if (rules.requiredProducts().contains(item.product())) {
-                reasons.add("PRODUCT:" + item.product());
-            } else if (rules.requiredPackages().contains(item.packageCode())) {
-                reasons.add("PACKAGE:" + item.packageCode());
-            }
+    public List<String> reasonsFor(final List<OrderAccepted.Item> items) {
+        return items.stream()
+                .map(this::reasonFor)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    /** A product-wide rule wins over a package rule for the same item. */
+    private Optional<String> reasonFor(final OrderAccepted.Item item) {
+        if (rules.requiredProducts().contains(item.product())) {
+            return Optional.of("PRODUCT:" + item.product());
         }
-        return reasons;
+        if (rules.requiredPackages().contains(item.packageCode())) {
+            return Optional.of("PACKAGE:" + item.packageCode());
+        }
+        return Optional.empty();
     }
 }

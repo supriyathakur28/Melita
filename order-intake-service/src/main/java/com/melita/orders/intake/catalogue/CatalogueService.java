@@ -10,7 +10,7 @@ public class CatalogueService {
 
     private final ProductRepository products;
 
-    public CatalogueService(ProductRepository products) {
+    public CatalogueService(final ProductRepository products) {
         this.products = products;
     }
 

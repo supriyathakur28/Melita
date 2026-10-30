@@ -19,7 +19,7 @@ import static org.awaitility.Awaitility.await;
 class NotificationIT extends CareIntegrationTest {
 
     @org.springframework.test.context.DynamicPropertySource
-    static void smtp(org.springframework.test.context.DynamicPropertyRegistry registry) {
+    static void smtp(final org.springframework.test.context.DynamicPropertyRegistry registry) {
         useMailpit(registry);
     }
 
@@ -28,13 +28,13 @@ class NotificationIT extends CareIntegrationTest {
 
     @Test
     void newOrderIsEmailedToTheAgentsMailboxOnce() {
-        var order = EmailComposerTest.order();
-        var event = EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req", Instant.now(), order);
+        final var order = EmailComposerTest.order();
+        final var event = EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req", Instant.now(), order);
 
         publish(OrderEvents.ORDER_ACCEPTED, event);
         publish(OrderEvents.ORDER_ACCEPTED, event);
 
-        String expected = "New order ERP-42 -> agents@melita.example";
+        final String expected = "New order ERP-42 -> agents@melita.example";
         await().atMost(Duration.ofSeconds(15)).until(() -> notifications.findByOrderId(order.orderId().toString())
                 .stream().anyMatch(n -> n.getStatus() == Notification.Status.SENT));
         await().during(Duration.ofSeconds(2)).atMost(Duration.ofSeconds(5)).until(() -> true);
@@ -47,13 +47,14 @@ class NotificationIT extends CareIntegrationTest {
 
     @Test
     void theSameEventProcessedConcurrentlyIsEmailedOnce() throws Exception {
-        var order = EmailComposerTest.order();
-        String reference = "ERP-RACE-" + order.orderId().toString().substring(0, 8);
-        var email = new Email(java.util.UUID.randomUUID().toString(), order.orderId().toString(), "order-accepted",
+        final var order = EmailComposerTest.order();
+        final String reference = "ERP-RACE-" + order.orderId().toString().substring(0, 8);
+        final var email =
+                new Email(java.util.UUID.randomUUID().toString(), order.orderId().toString(), "order-accepted",
                 "New order " + reference, "<p>race</p>");
-        var start = new java.util.concurrent.CountDownLatch(1);
+        final var start = new java.util.concurrent.CountDownLatch(1);
         try (var pool = java.util.concurrent.Executors.newFixedThreadPool(4)) {
-            var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
+            final var futures = new java.util.ArrayList<java.util.concurrent.Future<?>>();
             for (int i = 0; i < 4; i++) {
                 futures.add(pool.submit(() -> {
                     start.await();
@@ -62,7 +63,7 @@ class NotificationIT extends CareIntegrationTest {
                 }));
             }
             start.countDown();
-            for (var future : futures) {
+            for (final var future : futures) {
                 future.get();
             }
         }
@@ -73,7 +74,8 @@ class NotificationIT extends CareIntegrationTest {
 
     @Test
     void approvalRequestIsEmailed() {
-        var data = new OrderApprovalRequested(java.util.UUID.randomUUID(), "ERP-77", List.of("PACKAGE:MOBILE_POSTPAID"),
+        final var data =
+                new OrderApprovalRequested(java.util.UUID.randomUUID(), "ERP-77", List.of("PACKAGE:MOBILE_POSTPAID"),
                 EmailComposerTest.order().items());
 
         publish(OrderEvents.ORDER_APPROVAL_REQUESTED,
@@ -87,7 +89,7 @@ class NotificationIT extends CareIntegrationTest {
         rabbitTemplate.send("orders.events", OrderEvents.ORDER_ACCEPTED, MessageBuilder
                 .withBody("garbage".getBytes(StandardCharsets.UTF_8)).setType(OrderEvents.ORDER_ACCEPTED).build());
 
-        Message dead = rabbitTemplate.receive("care.order-events.dlq", 15_000);
+        final Message dead = rabbitTemplate.receive("care.order-events.dlq", 15_000);
         assertThat(dead).isNotNull();
     }
 }

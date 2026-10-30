@@ -28,29 +28,32 @@ public class EmailComposer {
     private final TemplateEngine templates;
     private final JsonMapper jsonMapper;
 
-    public EmailComposer(TemplateEngine templates, JsonMapper jsonMapper) {
+    public EmailComposer(final TemplateEngine templates, final JsonMapper jsonMapper) {
         this.templates = templates;
         this.jsonMapper = jsonMapper;
     }
 
     /** @return the email for this event type, or empty for event types that need no email. */
-    public Optional<Email> compose(String eventType, byte[] payload) {
+    public Optional<Email> compose(final String eventType, final byte[] payload) {
         try {
             return switch (eventType == null ? "" : eventType) {
                 case OrderEvents.ORDER_ACCEPTED -> {
-                    EventEnvelope<OrderAccepted> event = read(payload, new TypeReference<>() { });
-                    OrderAccepted order = event.data();
+                    final EventEnvelope<OrderAccepted> event = read(payload, new TypeReference<>() {
+                    });
+                    final OrderAccepted order = event.data();
                     yield Optional.of(render(event, order.orderId().toString(), "order-accepted",
                             "New order " + order.externalReference(),
                             Map.of("order", order, "maskedIdNumber", Masking.mask(order.customer().identityDocument().number()))));
                 }
                 case OrderEvents.ORDER_APPROVAL_REQUESTED -> {
-                    EventEnvelope<OrderApprovalRequested> event = read(payload, new TypeReference<>() { });
+                    final EventEnvelope<OrderApprovalRequested> event = read(payload, new TypeReference<>() {
+                    });
                     yield Optional.of(render(event, event.data().orderId().toString(), "approval-requested",
                             "Approval needed: order " + event.data().externalReference(), Map.of("order", event.data())));
                 }
                 case OrderEvents.ORDER_FULFILMENT_FAILED -> {
-                    EventEnvelope<OrderFulfilmentFailed> event = read(payload, new TypeReference<>() { });
+                    final EventEnvelope<OrderFulfilmentFailed> event = read(payload, new TypeReference<>() {
+                    });
                     yield Optional.of(render(event, event.data().orderId().toString(), "fulfilment-failed",
                             "Fulfilment failed: order " + event.data().externalReference(), Map.of("order", event.data())));
                 }
@@ -61,7 +64,7 @@ public class EmailComposer {
         }
     }
 
-    private <T> EventEnvelope<T> read(byte[] payload, TypeReference<EventEnvelope<T>> type) {
+    private <T> EventEnvelope<T> read(final byte[] payload, final TypeReference<EventEnvelope<T>> type) {
         try {
             return jsonMapper.readValue(payload, type);
         } catch (JacksonException | IllegalArgumentException | NullPointerException e) {
@@ -69,9 +72,9 @@ public class EmailComposer {
         }
     }
 
-    private Email render(EventEnvelope<?> event, String orderId, String template, String subject,
-                         Map<String, Object> model) {
-        String html = templates.process("mail/" + template, new Context(null, model));
+    private Email render(final EventEnvelope<?> event, final String orderId, final String template,
+                         final String subject, final Map<String, Object> model) {
+        final String html = templates.process("mail/" + template, new Context(null, model));
         return new Email(event.eventId().toString(), orderId, template, subject, html);
     }
 }

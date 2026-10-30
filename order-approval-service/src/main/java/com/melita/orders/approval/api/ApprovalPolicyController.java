@@ -14,7 +14,7 @@ class ApprovalPolicyController {
 
     private final ApprovalPolicy policy;
 
-    ApprovalPolicyController(ApprovalPolicy policy) {
+    ApprovalPolicyController(final ApprovalPolicy policy) {
         this.policy = policy;
     }
 

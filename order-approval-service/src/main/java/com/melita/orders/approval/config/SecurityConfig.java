@@ -29,8 +29,8 @@ import java.util.Map;
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ProblemAuthenticationEntryPoint entryPoint,
-                                            ProblemAccessDeniedHandler deniedHandler) {
+    SecurityFilterChain securityFilterChain(final HttpSecurity http, final ProblemAuthenticationEntryPoint entryPoint,
+                                            final ProblemAccessDeniedHandler deniedHandler) {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -50,15 +50,15 @@ public class SecurityConfig {
 
     /** Keycloak puts realm roles in {@code realm_access.roles}; they become {@code ROLE_AGENT}, {@code ROLE_SUPERVISOR}. */
     static Converter<Jwt, AbstractAuthenticationToken> realmRoles() {
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        final JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(SecurityConfig::realmRoles);
         converter.setPrincipalClaimName("preferred_username");
         return converter;
     }
 
     @SuppressWarnings("unchecked")
-    public static Collection<GrantedAuthority> realmRoles(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+    public static Collection<GrantedAuthority> realmRoles(final Jwt jwt) {
+        final Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
         if (realmAccess == null || !(realmAccess.get("roles") instanceof Collection<?> roles)) {
             return List.of();
         }

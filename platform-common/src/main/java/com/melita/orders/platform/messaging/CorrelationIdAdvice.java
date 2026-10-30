@@ -13,10 +13,10 @@ class CorrelationIdAdvice implements MethodInterceptor {
     static final String MESSAGE_ID_MDC_KEY = "messageId";
 
     @Override
-    public Object invoke(MethodInvocation invocation) throws Throwable {
-        Object[] arguments = invocation.getArguments();
+    public Object invoke(final MethodInvocation invocation) throws Throwable {
+        final Object[] arguments = invocation.getArguments();
         if (arguments.length > 1 && arguments[1] instanceof Message message) {
-            Object correlationId = message.getMessageProperties().getHeader(OrderEvents.CORRELATION_HEADER);
+            final Object correlationId = message.getMessageProperties().getHeader(OrderEvents.CORRELATION_HEADER);
             if (correlationId != null) {
                 MDC.put(RequestIds.MDC_KEY, correlationId.toString());
             }

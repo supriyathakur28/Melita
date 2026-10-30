@@ -18,7 +18,7 @@ class CatalogueCacheIT extends IntakeIntegrationTest {
     void catalogueIsCachedInRedisAsOneEntry() {
         catalogueService.current();
 
-        String cached = redis.opsForValue().get("order-intake:catalogue::all");
+        final String cached = redis.opsForValue().get("order-intake:catalogue::all");
         assertThat(cached).contains("INTERNET_1GBPS").doesNotContain("@class");
     }
 }

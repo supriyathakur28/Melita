@@ -13,6 +13,7 @@ import com.melita.orders.intake.order.api.PlaceOrderRequest.TimeSlot;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 /** Test data for order requests. */
@@ -30,27 +31,25 @@ public final class TestOrders {
                 "+35679123456", new IdentityDocumentRequest(DocumentType.ID_CARD, "123456M"), address());
     }
 
-    public static InstallationRequest installation(LocalDate date) {
+    public static InstallationRequest installation(final LocalDate date) {
         return new InstallationRequest(true, null, date, TimeSlot.MORNING);
     }
 
-    public static PlaceOrderRequest internetAndMobile(String reference, LocalDate installationDate) {
+    public static PlaceOrderRequest internetAndMobile(final String reference, final LocalDate installationDate) {
         return new PlaceOrderRequest(reference, customer(), installation(installationDate), List.of(
                 new ItemRequest(Product.INTERNET, "INTERNET_1GBPS"),
                 new ItemRequest(Product.MOBILE, "MOBILE_POSTPAID")));
     }
 
-    public static PlaceOrderRequest mobileOnly(String reference) {
+    public static PlaceOrderRequest mobileOnly(final String reference) {
         return new PlaceOrderRequest(reference, customer(), null,
                 List.of(new ItemRequest(Product.MOBILE, "MOBILE_PREPAID")));
     }
 
     /** A Monday about two weeks out: always valid for the default lead time and horizon. */
     public static LocalDate validInstallationDate() {
-        LocalDate date = LocalDate.now(ZoneId.of("Europe/Malta")).plusDays(14);
-        while (date.getDayOfWeek() != DayOfWeek.MONDAY) {
-            date = date.plusDays(1);
-        }
-        return date;
+        return LocalDate.now(ZoneId.of("Europe/Malta"))
+                .plusDays(14)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
     }
 }

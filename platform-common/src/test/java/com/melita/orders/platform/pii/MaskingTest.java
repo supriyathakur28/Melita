@@ -15,7 +15,7 @@ class MaskingTest {
             "12M, ****",
             "M, ****"
     })
-    void keepsOnlyTheLastThreeCharacters(String value, String masked) {
+    void keepsOnlyTheLastThreeCharacters(final String value, final String masked) {
         assertThat(Masking.mask(value)).isEqualTo(masked);
     }
 

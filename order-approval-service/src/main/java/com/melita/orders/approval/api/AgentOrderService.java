@@ -44,8 +44,8 @@ public class AgentOrderService {
     private final OrdersProperties properties;
     private final Clock clock;
 
-    public AgentOrderService(CustomerOrderRepository orders, OutboxWriter outbox, OrdersProperties properties,
-                             Clock clock) {
+    public AgentOrderService(final CustomerOrderRepository orders, final OutboxWriter outbox,
+                             final OrdersProperties properties, final Clock clock) {
         this.orders = orders;
         this.outbox = outbox;
         this.properties = properties;
@@ -53,8 +53,8 @@ public class AgentOrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<OrderViews.Summary> list(OrderStatus status, Pageable pageable) {
-        Page<OrderSummaryView> page = status == null
+    public Page<OrderViews.Summary> list(final OrderStatus status, final Pageable pageable) {
+        final Page<OrderSummaryView> page = status == null
                 ? orders.findAllProjectedBy(pageable)
                 : orders.findByStatus(status, pageable);
         return page.map(v -> new OrderViews.Summary(v.getId(), v.getPartnerId(), v.getExternalReference(),
@@ -62,17 +62,17 @@ public class AgentOrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderViews.Detail get(UUID orderId) {
-        CustomerOrder order = load(orderId);
+    public OrderViews.Detail get(final UUID orderId) {
+        final CustomerOrder order = load(orderId);
         return OrderViews.detail(order, warnings(order));
     }
 
     @Transactional
-    public OrderViews.Detail approve(UUID orderId, String agent, String comment) {
-        CustomerOrder order = loadForUpdate(orderId);
-        Instant now = now();
+    public OrderViews.Detail approve(final UUID orderId, final String agent, final String comment) {
+        final CustomerOrder order = loadForUpdate(orderId);
+        final Instant now = now();
         order.approve(agent, comment, now);
-        boolean slotExpired = slotExpired(order);
+        final boolean slotExpired = slotExpired(order);
         outbox.append(EventEnvelope.of(OrderEvents.ORDER_APPROVED, RequestIds.current(), now,
                 new OrderApproved(order.getId(), order.getExternalReference(), agent, now, comment, slotExpired)));
         orders.saveAndFlush(order);
@@ -81,9 +81,9 @@ public class AgentOrderService {
     }
 
     @Transactional
-    public OrderViews.Detail reject(UUID orderId, String agent, String reason) {
-        CustomerOrder order = loadForUpdate(orderId);
-        Instant now = now();
+    public OrderViews.Detail reject(final UUID orderId, final String agent, final String reason) {
+        final CustomerOrder order = loadForUpdate(orderId);
+        final Instant now = now();
         order.reject(agent, reason, now);
         outbox.append(EventEnvelope.of(OrderEvents.ORDER_REJECTED, RequestIds.current(), now,
                 new OrderRejected(order.getId(), order.getExternalReference(), agent, now, reason)));
@@ -93,21 +93,21 @@ public class AgentOrderService {
     }
 
     /** Locks the order row for the decision, so concurrent decisions queue instead of deadlocking. */
-    private CustomerOrder loadForUpdate(UUID orderId) {
+    private CustomerOrder loadForUpdate(final UUID orderId) {
         return orders.findForUpdate(orderId).orElseThrow(() -> ApiException.notFound("Order"));
     }
 
-    private CustomerOrder load(UUID orderId) {
+    private CustomerOrder load(final UUID orderId) {
         return orders.findWithItemsById(orderId).orElseThrow(() -> ApiException.notFound("Order"));
     }
 
-    private List<String> warnings(CustomerOrder order) {
-        boolean open = order.getStatus() == OrderStatus.PENDING_APPROVAL
+    private List<String> warnings(final CustomerOrder order) {
+        final boolean open = order.getStatus() == OrderStatus.PENDING_APPROVAL
                 || order.getStatus() == OrderStatus.READY_FOR_FULFILMENT;
         return open && slotExpired(order) ? List.of(SLOT_EXPIRED) : List.of();
     }
 
-    private boolean slotExpired(CustomerOrder order) {
+    private boolean slotExpired(final CustomerOrder order) {
         return order.getInstallation() != null
                 && order.getInstallation().isExpiredOn(LocalDate.now(clock.withZone(properties.zone())));
     }

@@ -50,7 +50,7 @@ public abstract class ApprovalIntegrationTest {
     }
 
     @DynamicPropertySource
-    static void fakeFulfilment(DynamicPropertyRegistry registry) {
+    static void fakeFulfilment(final DynamicPropertyRegistry registry) {
         registry.add("fulfilment.base-url", FULFILMENT::baseUrl);
         registry.add("spring.security.oauth2.client.provider.fulfilment.token-uri", () -> FULFILMENT.baseUrl() + "/token");
     }
@@ -60,7 +60,7 @@ public abstract class ApprovalIntegrationTest {
         /** Captures everything order-approval publishes (approval-requested, approved, ...). */
         @Bean
         Declarables approvalEventCapture() {
-            var queue = QueueBuilder.durable(CAPTURE_QUEUE).build();
+            final var queue = QueueBuilder.durable(CAPTURE_QUEUE).build();
             return new Declarables(queue, BindingBuilder.bind(queue).to(Queues.eventsExchange()).with("order.#"));
         }
     }
@@ -70,14 +70,14 @@ public abstract class ApprovalIntegrationTest {
     @Autowired
     protected JsonMapper jsonMapper;
 
-    protected EventEnvelope<OrderAccepted> publishAccepted(OrderAccepted order) {
-        var event = EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req-it", Instant.now(), order);
+    protected EventEnvelope<OrderAccepted> publishAccepted(final OrderAccepted order) {
+        final var event = EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req-it", Instant.now(), order);
         publishRaw(event.eventId().toString(), jsonMapper.writeValueAsString(event));
         return event;
     }
 
-    protected void publishRaw(String messageId, String json) {
-        Message message = MessageBuilder.withBody(json.getBytes(StandardCharsets.UTF_8))
+    protected void publishRaw(final String messageId, final String json) {
+        final Message message = MessageBuilder.withBody(json.getBytes(StandardCharsets.UTF_8))
                 .setMessageId(messageId).setType(OrderEvents.ORDER_ACCEPTED)
                 .setHeader(OrderEvents.CORRELATION_HEADER, "req-it")
                 .build();
@@ -87,7 +87,7 @@ public abstract class ApprovalIntegrationTest {
     /** Events of one type for one order seen on the capture queue so far (consumes the queue). */
     protected final List<String> captured = new ArrayList<>();
 
-    protected boolean eventSeen(String eventType, String orderId) {
+    protected boolean eventSeen(final String eventType, final String orderId) {
         Message message;
         while ((message = rabbitTemplate.receive(CAPTURE_QUEUE)) != null) {
             captured.add(message.getMessageProperties().getType() + " " + new String(message.getBody(), StandardCharsets.UTF_8));

@@ -20,23 +20,24 @@ import java.time.Clock;
 public class MessagingSupportConfiguration {
 
     @Bean
-    OutboxWriter outboxWriter(JdbcTemplate jdbc, JsonMapper jsonMapper) {
+    OutboxWriter outboxWriter(final JdbcTemplate jdbc, final JsonMapper jsonMapper) {
         return new OutboxWriter(jdbc, jsonMapper);
     }
 
     @Bean
-    NamedLock namedLock(DataSource dataSource) {
+    NamedLock namedLock(final DataSource dataSource) {
         return new NamedLock(dataSource);
     }
 
     @Bean
-    OutboxRelay outboxRelay(JdbcTemplate jdbc, RabbitTemplate rabbitTemplate, NamedLock namedLock, Clock clock) {
+    OutboxRelay outboxRelay(final JdbcTemplate jdbc, final RabbitTemplate rabbitTemplate, final NamedLock namedLock,
+                            final Clock clock) {
         rabbitTemplate.setMandatory(true);
         return new OutboxRelay(jdbc, rabbitTemplate, namedLock, clock);
     }
 
     @Bean
-    InboxGuard inboxGuard(JdbcTemplate jdbc, Clock clock) {
+    InboxGuard inboxGuard(final JdbcTemplate jdbc, final Clock clock) {
         return new InboxGuard(jdbc, clock);
     }
 }

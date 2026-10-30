@@ -30,7 +30,8 @@ public record EventEnvelope<T>(
         Objects.requireNonNull(data, "data");
     }
 
-    public static <T> EventEnvelope<T> of(String eventType, String correlationId, Instant occurredAt, T data) {
+    public static <T> EventEnvelope<T> of(final String eventType, final String correlationId, final Instant occurredAt,
+                                          final T data) {
         return new EventEnvelope<>(UUID.randomUUID(), eventType, CURRENT_SCHEMA_VERSION, occurredAt, correlationId, data);
     }
 }

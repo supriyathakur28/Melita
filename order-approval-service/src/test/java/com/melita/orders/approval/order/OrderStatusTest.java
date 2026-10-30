@@ -33,13 +33,13 @@ class OrderStatusTest {
 
     @ParameterizedTest(name = "{0} -> {1}")
     @MethodSource("allPairs")
-    void onlyDocumentedTransitionsAreAllowed(OrderStatus from, OrderStatus to) {
+    void onlyDocumentedTransitionsAreAllowed(final OrderStatus from, final OrderStatus to) {
         assertThat(from.canTransitionTo(to)).isEqualTo(EXPECTED.get(from).contains(to));
     }
 
     @ParameterizedTest
     @MethodSource("allPairs")
-    void terminalStatesHaveNoWayOut(OrderStatus from, OrderStatus ignored) {
+    void terminalStatesHaveNoWayOut(final OrderStatus from, final OrderStatus ignored) {
         assertThat(from.isTerminal()).isEqualTo(EXPECTED.get(from).isEmpty());
     }
 }

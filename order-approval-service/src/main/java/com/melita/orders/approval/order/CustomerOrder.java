@@ -113,10 +113,11 @@ public class CustomerOrder implements Persistable<UUID> {
     }
 
     /** Creates a received order in its first status: held for approval, or ready for Fulfilment. */
-    public static CustomerOrder receive(UUID id, String partnerId, String externalReference, CustomerDetails customer,
-                                        Installation installation, List<NewItem> items, List<String> approvalReasons,
-                                        Instant now) {
-        var order = new CustomerOrder();
+    public static CustomerOrder receive(final UUID id, final String partnerId, final String externalReference,
+                                        final CustomerDetails customer, final Installation installation,
+                                        final List<NewItem> items, final List<String> approvalReasons,
+                                        final Instant now) {
+        final var order = new CustomerOrder();
         order.id = id;
         order.partnerId = partnerId;
         order.externalReference = externalReference;
@@ -128,10 +129,12 @@ public class CustomerOrder implements Persistable<UUID> {
         order.updatedAt = now;
         order.isNew = true;
         items.forEach(i -> order.items.add(new OrderItem(order, i.productCode(), i.packageCode(), i.packageName())));
-        OrderStatus initial = order.approvalRequired ? OrderStatus.PENDING_APPROVAL : OrderStatus.READY_FOR_FULFILMENT;
+        final OrderStatus initial =
+                order.approvalRequired ? OrderStatus.PENDING_APPROVAL : OrderStatus.READY_FOR_FULFILMENT;
         order.status = initial;
         order.nextAttemptAt = initial == OrderStatus.READY_FOR_FULFILMENT ? now : null;
-        String reason = order.approvalRequired ? "approval required: " + String.join(", ", approvalReasons) : null;
+        final String reason =
+                order.approvalRequired ? "approval required: " + String.join(", ", approvalReasons) : null;
         order.history.add(new StatusChange(order, null, initial, SYSTEM, reason, now));
         return order;
     }
@@ -139,7 +142,7 @@ public class CustomerOrder implements Persistable<UUID> {
     public record NewItem(String productCode, String packageCode, String packageName) {
     }
 
-    public void approve(String agent, String comment, Instant now) {
+    public void approve(final String agent, final String comment, final Instant now) {
         transitionTo(OrderStatus.READY_FOR_FULFILMENT, agent, comment, now);
         decidedBy = agent;
         decidedAt = now;
@@ -147,14 +150,14 @@ public class CustomerOrder implements Persistable<UUID> {
         nextAttemptAt = now;
     }
 
-    public void reject(String agent, String reason, Instant now) {
+    public void reject(final String agent, final String reason, final Instant now) {
         transitionTo(OrderStatus.REJECTED, agent, reason, now);
         decidedBy = agent;
         decidedAt = now;
         decisionNote = reason;
     }
 
-    public void markSubmitted(String reference, Instant now) {
+    public void markSubmitted(final String reference, final Instant now) {
         transitionTo(OrderStatus.SUBMITTED, SYSTEM, "fulfilment reference " + reference, now);
         fulfilmentReference = reference;
         nextAttemptAt = null;
@@ -162,7 +165,7 @@ public class CustomerOrder implements Persistable<UUID> {
     }
 
     /** A temporary Fulfilment failure: stay READY and try again later. */
-    public void recordFailedAttempt(String error, Instant retryAt, Instant now) {
+    public void recordFailedAttempt(final String error, final Instant retryAt, final Instant now) {
         if (status != OrderStatus.READY_FOR_FULFILMENT) {
             throw new InvalidTransitionException(status, OrderStatus.READY_FOR_FULFILMENT);
         }
@@ -176,21 +179,21 @@ public class CustomerOrder implements Persistable<UUID> {
      * Whether the preferred installation date had passed, decided on the first submission attempt and then
      * kept: a retry must send Fulfilment the same body, or its idempotency check sees a different request.
      */
-    public boolean preferredSlotExpired(java.time.LocalDate today) {
+    public boolean preferredSlotExpired(final java.time.LocalDate today) {
         if (preferredSlotExpired == null) {
             preferredSlotExpired = installation != null && installation.isExpiredOn(today);
         }
         return preferredSlotExpired;
     }
 
-    public void markFulfilmentFailed(String error, Instant now) {
+    public void markFulfilmentFailed(final String error, final Instant now) {
         transitionTo(OrderStatus.FULFILMENT_FAILED, SYSTEM, error, now);
         attempts++;
         lastError = truncate(error, ERROR_LENGTH);
         nextAttemptAt = null;
     }
 
-    private void transitionTo(OrderStatus target, String actor, String reason, Instant now) {
+    private void transitionTo(final OrderStatus target, final String actor, final String reason, final Instant now) {
         if (!status.canTransitionTo(target)) {
             throw new InvalidTransitionException(status, target);
         }
@@ -199,7 +202,7 @@ public class CustomerOrder implements Persistable<UUID> {
         updatedAt = now;
     }
 
-    private static String truncate(String text, int length) {
+    private static String truncate(final String text, final int length) {
         return text == null || text.length() <= length ? text : text.substring(0, length);
     }
 

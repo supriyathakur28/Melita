@@ -28,19 +28,19 @@ public class RabbitListenerSupportConfiguration {
     /** Replaces Boot's default listener factory. */
     @Bean
     SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-            SimpleRabbitListenerContainerFactoryConfigurer configurer, ConnectionFactory connectionFactory,
-            ListenerRetryProperties retry, ObjectProvider<ListenerFailureCallback> failureCallbacks) {
-        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+            final SimpleRabbitListenerContainerFactoryConfigurer configurer, final ConnectionFactory connectionFactory,
+            final ListenerRetryProperties retry, final ObjectProvider<ListenerFailureCallback> failureCallbacks) {
+        final SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         configurer.configure(factory, connectionFactory);
 
-        RetryPolicy retryPolicy = RetryPolicy.builder()
+        final RetryPolicy retryPolicy = RetryPolicy.builder()
                 .maxRetries(retry.maxRetries())
                 .delay(retry.initialDelay())
                 .multiplier(2.0)
                 .maxDelay(retry.maxDelay())
                 .predicate(failure -> !isPoison(failure))
                 .build();
-        Advice retryInterceptor = RetryInterceptorBuilder.stateless()
+        final Advice retryInterceptor = RetryInterceptorBuilder.stateless()
                 .retryPolicy(retryPolicy)
                 .recoverer(new DeadLetteringRecoverer(failureCallbacks.orderedStream().toList()))
                 .build();
@@ -50,12 +50,8 @@ public class RabbitListenerSupportConfiguration {
         return factory;
     }
 
-    static boolean isPoison(Throwable failure) {
-        for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
-            if (t instanceof PoisonMessageException || t instanceof MessageConversionException) {
-                return true;
-            }
-        }
-        return false;
+    static boolean isPoison(final Throwable failure) {
+        return ListenerFailureCallback.causeChain(failure)
+                .anyMatch(t -> t instanceof PoisonMessageException || t instanceof MessageConversionException);
     }
 }

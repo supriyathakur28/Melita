@@ -23,7 +23,7 @@ public class FulfilmentClient {
     private final RestClient restClient;
     private final CircuitBreaker circuitBreaker;
 
-    public FulfilmentClient(RestClient fulfilmentRestClient, CircuitBreaker fulfilmentCircuitBreaker) {
+    public FulfilmentClient(final RestClient fulfilmentRestClient, final CircuitBreaker fulfilmentCircuitBreaker) {
         this.restClient = fulfilmentRestClient;
         this.circuitBreaker = fulfilmentCircuitBreaker;
     }
@@ -33,7 +33,7 @@ public class FulfilmentClient {
                 && circuitBreaker.getState() != CircuitBreaker.State.FORCED_OPEN;
     }
 
-    public FulfilmentOutcome submit(FulfilmentRequest request) {
+    public FulfilmentOutcome submit(final FulfilmentRequest request) {
         try {
             return circuitBreaker.executeSupplier(() -> call(request));
         } catch (CallNotPermittedException open) {
@@ -43,22 +43,22 @@ public class FulfilmentClient {
         }
     }
 
-    private FulfilmentOutcome call(FulfilmentRequest request) {
+    private FulfilmentOutcome call(final FulfilmentRequest request) {
         try {
-            Map<?, ?> body = restClient.post()
+            final Map<?, ?> body = restClient.post()
                     .uri("/api/v1/fulfilment-orders")
                     .header("Idempotency-Key", request.orderId().toString())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
                     .body(Map.class);
-            Object reference = body == null ? null : body.get("fulfilmentReference");
+            final Object reference = body == null ? null : body.get("fulfilmentReference");
             if (reference == null) {
                 throw new TemporaryFailure("Fulfilment returned no fulfilmentReference");
             }
             return new FulfilmentOutcome.Submitted(reference.toString());
         } catch (RestClientResponseException e) {
-            HttpStatusCode status = e.getStatusCode();
+            final HttpStatusCode status = e.getStatusCode();
             if (status.is4xxClientError() && status.value() != 429) {
                 return new FulfilmentOutcome.Rejected("HTTP " + status.value() + " from Fulfilment");
             }
@@ -73,7 +73,7 @@ public class FulfilmentClient {
 
     /** Recorded by the circuit breaker. */
     public static class TemporaryFailure extends RuntimeException {
-        TemporaryFailure(String message) {
+        TemporaryFailure(final String message) {
             super(message);
         }
     }

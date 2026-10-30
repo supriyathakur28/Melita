@@ -33,6 +33,8 @@
         <resilience4j.version>2.3.0</resilience4j.version>
         <springdoc.version>3.0.3</springdoc.version>
         <jacoco.version>0.8.13</jacoco.version>
+        <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
+        <checkstyle.version>11.0.1</checkstyle.version>
     </properties>
 
     <dependencyManagement>
@@ -69,6 +71,35 @@
 
     <build>
         <plugins>
+            <!-- Coding conventions (checkstyle.xml): fails the build at the start, before compiling. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>${checkstyle.version}</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>${maven.multiModuleProjectDirectory}/checkstyle.xml</configLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>error</violationSeverity>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>conventions</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Unit tests (*Test) run in the test phase, integration tests (*IT) in verify. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

@@ -43,7 +43,7 @@ public class IdempotencyRecord implements Persistable<IdempotencyRecord.Key> {
     protected IdempotencyRecord() {
     }
 
-    public IdempotencyRecord(Key key, String requestHash, UUID orderId, Instant createdAt) {
+    public IdempotencyRecord(final Key key, final String requestHash, final UUID orderId, final Instant createdAt) {
         this.key = key;
         this.requestHash = requestHash;
         this.orderId = orderId;

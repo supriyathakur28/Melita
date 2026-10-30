@@ -20,29 +20,24 @@ class DeadLetteringRecoverer implements MessageRecoverer {
 
     private final List<ListenerFailureCallback> callbacks;
 
-    DeadLetteringRecoverer(List<ListenerFailureCallback> callbacks) {
+    DeadLetteringRecoverer(final List<ListenerFailureCallback> callbacks) {
         this.callbacks = callbacks;
     }
 
     @Override
-    public void recover(Message message, Throwable cause) {
+    public void recover(final Message message, final Throwable cause) {
         log.error("Dead-lettering message {} ({}): {}", message.getMessageProperties().getMessageId(),
-                message.getMessageProperties().getType(), rootMessage(cause));
-        for (ListenerFailureCallback callback : callbacks) {
-            try {
-                callback.onDeadLetter(message, cause);
-            } catch (RuntimeException e) {
-                log.warn("Dead-letter callback failed", e);
-            }
-        }
+                message.getMessageProperties().getType(), ListenerFailureCallback.rootMessage(cause));
+        callbacks.forEach(callback -> notify(callback, message, cause));
         throw new AmqpRejectAndDontRequeueException("Retries exhausted or poison message", cause);
     }
 
-    static String rootMessage(Throwable throwable) {
-        Throwable root = throwable;
-        while (root.getCause() != null && root.getCause() != root) {
-            root = root.getCause();
+    /** A failing callback must not stop the message from being dead-lettered. */
+    private static void notify(final ListenerFailureCallback callback, final Message message, final Throwable cause) {
+        try {
+            callback.onDeadLetter(message, cause);
+        } catch (RuntimeException e) {
+            log.warn("Dead-letter callback failed", e);
         }
-        return root.getClass().getSimpleName() + ": " + root.getMessage();
     }
 }

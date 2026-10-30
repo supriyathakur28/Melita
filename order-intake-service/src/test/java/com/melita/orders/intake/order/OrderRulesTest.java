@@ -37,28 +37,28 @@ class OrderRulesTest {
     private final InstallationProperties properties = new InstallationProperties(
             2, 60, Set.of(DayOfWeek.SUNDAY), Set.of(LocalDate.of(2026, 12, 8)), null);
 
-    private List<FieldViolation> check(PlaceOrderRequest request, Instant now) {
+    private List<FieldViolation> check(final PlaceOrderRequest request, final Instant now) {
         return new OrderRules(properties, Clock.fixed(now, ZoneOffset.UTC)).check(request, CATALOGUE);
     }
 
-    private static List<String> codes(List<FieldViolation> violations) {
+    private static List<String> codes(final List<FieldViolation> violations) {
         return violations.stream().map(FieldViolation::code).toList();
     }
 
     @Test
     void validOrderHasNoViolations() {
-        var request = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 9));
+        final var request = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 9));
 
         assertThat(check(request, WEDNESDAY_MORNING)).isEmpty();
     }
 
     @Test
     void unknownAndRetiredPackagesAreRejected() {
-        var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of(
+        final var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of(
                 new ItemRequest(Product.INTERNET, "INTERNET_10GBPS"),
                 new ItemRequest(Product.MOBILE, "INTERNET_100MBPS")));
 
-        var violations = check(request, WEDNESDAY_MORNING);
+        final var violations = check(request, WEDNESDAY_MORNING);
 
         assertThat(violations).extracting(FieldViolation::field)
                 .contains("items[0].packageCode", "items[1].packageCode");
@@ -67,7 +67,7 @@ class OrderRulesTest {
 
     @Test
     void packageMustBelongToTheStatedProduct() {
-        var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null,
+        final var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null,
                 List.of(new ItemRequest(Product.MOBILE, "INTERNET_1GBPS")));
 
         assertThat(codes(check(request, WEDNESDAY_MORNING))).containsExactly("PACKAGE_PRODUCT_MISMATCH");
@@ -75,7 +75,7 @@ class OrderRulesTest {
 
     @Test
     void fixedLineProductsNeedInstallationDetails() {
-        var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null,
+        final var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null,
                 List.of(new ItemRequest(Product.INTERNET, "INTERNET_1GBPS")));
 
         assertThat(codes(check(request, WEDNESDAY_MORNING))).containsExactly("INSTALLATION_REQUIRED");
@@ -83,7 +83,7 @@ class OrderRulesTest {
 
     @Test
     void mobileOnlyOrderMustNotCarryInstallationDetails() {
-        var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(),
+        final var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(),
                 TestOrders.installation(LocalDate.of(2026, 11, 9)),
                 List.of(new ItemRequest(Product.MOBILE, "MOBILE_PREPAID")));
 
@@ -93,11 +93,11 @@ class OrderRulesTest {
     @Test
     void customerMustBeAtLeast18InMaltaToday() {
         // 18th birthday is 5 Nov 2026; at 23:30 UTC on 4 Nov it is already 5 Nov in Malta.
-        var customer = TestOrders.customer();
-        var minor = new PlaceOrderRequest.CustomerRequest(customer.firstName(), customer.lastName(),
+        final var customer = TestOrders.customer();
+        final var minor = new PlaceOrderRequest.CustomerRequest(customer.firstName(), customer.lastName(),
                 LocalDate.of(2008, 11, 5), customer.email(), customer.mobileNumber(), customer.identityDocument(),
                 customer.address());
-        var request = new PlaceOrderRequest("ERP-1", minor, null,
+        final var request = new PlaceOrderRequest("ERP-1", minor, null,
                 List.of(new ItemRequest(Product.MOBILE, "MOBILE_PREPAID")));
 
         assertThat(codes(check(request, Instant.parse("2026-11-04T22:30:00Z")))).containsExactly("CUSTOMER_UNDERAGE");
@@ -107,7 +107,7 @@ class OrderRulesTest {
     @Test
     void installationNeedsTwoWorkingDaysNoticeSkippingSundays() {
         // Friday 6 Nov: two working days ahead are Sat 7 and Mon 9 (Sunday is skipped).
-        Instant friday = Instant.parse("2026-11-06T09:00:00Z");
+        final Instant friday = Instant.parse("2026-11-06T09:00:00Z");
 
         assertThat(check(TestOrders.internetAndMobile("A", LocalDate.of(2026, 11, 7)), friday))
                 .extracting(FieldViolation::message).singleElement().asString().contains("on or after 2026-11-09");
@@ -116,8 +116,8 @@ class OrderRulesTest {
 
     @Test
     void zeroLeadTimeAllowsToday() {
-        var sameDay = new InstallationProperties(0, 60, Set.of(DayOfWeek.SUNDAY), Set.of(), null);
-        var rules = new OrderRules(sameDay, Clock.fixed(WEDNESDAY_MORNING, ZoneOffset.UTC));
+        final var sameDay = new InstallationProperties(0, 60, Set.of(DayOfWeek.SUNDAY), Set.of(), null);
+        final var rules = new OrderRules(sameDay, Clock.fixed(WEDNESDAY_MORNING, ZoneOffset.UTC));
 
         assertThat(rules.check(TestOrders.internetAndMobile("A", LocalDate.of(2026, 11, 4)), CATALOGUE)).isEmpty();
     }
@@ -125,7 +125,7 @@ class OrderRulesTest {
     @Test
     void todayIsTakenInMaltaNotUtc() {
         // 23:30 UTC on Wednesday 4 Nov is already Thursday 5 Nov in Malta: earliest date moves from Fri to Sat.
-        Instant lateWednesdayUtc = Instant.parse("2026-11-04T23:30:00Z");
+        final Instant lateWednesdayUtc = Instant.parse("2026-11-04T23:30:00Z");
 
         assertThat(codes(check(TestOrders.internetAndMobile("A", LocalDate.of(2026, 11, 6)), lateWednesdayUtc)))
                 .containsExactly("INSTALLATION_DATE_INVALID");
@@ -144,11 +144,11 @@ class OrderRulesTest {
 
     @Test
     void everyViolationIsReportedTogether() {
-        var customer = TestOrders.customer();
-        var minor = new PlaceOrderRequest.CustomerRequest(customer.firstName(), customer.lastName(),
+        final var customer = TestOrders.customer();
+        final var minor = new PlaceOrderRequest.CustomerRequest(customer.firstName(), customer.lastName(),
                 LocalDate.of(2015, 1, 1), customer.email(), customer.mobileNumber(), customer.identityDocument(),
                 customer.address());
-        var request = new PlaceOrderRequest("ERP-1", minor, null, List.of(
+        final var request = new PlaceOrderRequest("ERP-1", minor, null, List.of(
                 new ItemRequest(Product.INTERNET, "INTERNET_1GBPS"),
                 new ItemRequest(Product.MOBILE, "NOPE")));
 

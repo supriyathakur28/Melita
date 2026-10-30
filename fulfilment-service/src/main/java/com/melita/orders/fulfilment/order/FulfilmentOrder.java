@@ -79,10 +79,12 @@ public class FulfilmentOrder implements Persistable<UUID> {
     public record NewItem(String productCode, String packageCode, String packageName) {
     }
 
-    public static FulfilmentOrder create(String fulfilmentReference, String idempotencyKey, String requestHash,
-                                         UUID orderId, String partnerId, String externalReference, Customer customer,
-                                         Installation installation, List<NewItem> items, Instant receivedAt) {
-        var order = new FulfilmentOrder();
+    public static FulfilmentOrder create(final String fulfilmentReference, final String idempotencyKey,
+                                         final String requestHash, final UUID orderId, final String partnerId,
+                                         final String externalReference, final Customer customer,
+                                         final Installation installation, final List<NewItem> items,
+                                         final Instant receivedAt) {
+        final var order = new FulfilmentOrder();
         order.id = UUID.randomUUID();
         order.fulfilmentReference = fulfilmentReference;
         order.idempotencyKey = idempotencyKey;

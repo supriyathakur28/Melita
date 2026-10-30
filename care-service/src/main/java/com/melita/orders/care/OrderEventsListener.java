@@ -19,32 +19,24 @@ class OrderEventsListener implements ListenerFailureCallback {
     private final EmailComposer composer;
     private final NotificationService notifications;
 
-    OrderEventsListener(EmailComposer composer, NotificationService notifications) {
+    OrderEventsListener(final EmailComposer composer, final NotificationService notifications) {
         this.composer = composer;
         this.notifications = notifications;
     }
 
     @RabbitListener(queues = "care.order-events")
-    void onOrderEvent(Message message) {
-        String type = message.getMessageProperties().getType();
+    void onOrderEvent(final Message message) {
+        final String type = message.getMessageProperties().getType();
         composer.compose(type, message.getBody()).ifPresentOrElse(notifications::send,
                 () -> log.debug("No email for event type {}", type));
     }
 
     /** Retries are exhausted (e.g. SMTP down for over a minute): record it, the message goes to the DLQ. */
     @Override
-    public void onDeadLetter(Message message, Throwable cause) {
-        String eventId = message.getMessageProperties().getMessageId();
+    public void onDeadLetter(final Message message, final Throwable cause) {
+        final String eventId = message.getMessageProperties().getMessageId();
         if (eventId != null) {
-            notifications.markFailed(eventId, String.valueOf(rootMessage(cause)));
+            notifications.markFailed(eventId, ListenerFailureCallback.rootMessage(cause));
         }
-    }
-
-    private static String rootMessage(Throwable throwable) {
-        Throwable root = throwable;
-        while (root.getCause() != null && root.getCause() != root) {
-            root = root.getCause();
-        }
-        return root.getClass().getSimpleName() + ": " + root.getMessage();
     }
 }

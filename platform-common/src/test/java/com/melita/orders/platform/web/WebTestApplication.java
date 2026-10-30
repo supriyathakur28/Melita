@@ -35,8 +35,8 @@ import static org.mockito.Mockito.mock;
 class WebTestApplication {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, ProblemAuthenticationEntryPoint entryPoint,
-                                            ProblemAccessDeniedHandler deniedHandler) {
+    SecurityFilterChain securityFilterChain(final HttpSecurity http, final ProblemAuthenticationEntryPoint entryPoint,
+                                            final ProblemAccessDeniedHandler deniedHandler) {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -102,7 +102,7 @@ class WebTestApplication {
         }
 
         @PostMapping("/test/validate")
-        Payload validate(@Valid @RequestBody Payload payload) {
+        Payload validate(@Valid @RequestBody final Payload payload) {
             return payload;
         }
 
@@ -118,8 +118,8 @@ class WebTestApplication {
 
         @PostMapping("/test/validate-with-header")
         Payload validateWithHeader(@org.springframework.web.bind.annotation.RequestHeader("Idempotency-Key")
-                                   @com.melita.orders.platform.idempotency.IdempotencyKey String key,
-                                   @Valid @RequestBody Payload payload) {
+                                   @com.melita.orders.platform.idempotency.IdempotencyKey final String key,
+                                   @Valid @RequestBody final Payload payload) {
             return payload;
         }
 

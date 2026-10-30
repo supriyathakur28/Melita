@@ -15,8 +15,8 @@ class CustomerOrderTest {
     private static final Instant NOW = Instant.parse("2026-11-04T09:00:00Z");
     private static final Address ADDRESS = new Address("12, Triq il-Kbira", null, "Mosta", "MST 1234");
 
-    private static CustomerOrder order(List<String> approvalReasons) {
-        var customer = new CustomerDetails("Maria", "Borg", LocalDate.of(1990, 4, 12), "maria@example.com",
+    private static CustomerOrder order(final List<String> approvalReasons) {
+        final var customer = new CustomerDetails("Maria", "Borg", LocalDate.of(1990, 4, 12), "maria@example.com",
                 "+35679123456", "ID_CARD", "123456M", ADDRESS);
         return CustomerOrder.receive(UUID.randomUUID(), "erp-partner", "ERP-1", customer,
                 new Installation(LocalDate.of(2026, 11, 9), "MORNING", ADDRESS),
@@ -26,7 +26,7 @@ class CustomerOrderTest {
 
     @Test
     void orderNeedingApprovalIsHeld() {
-        CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
+        final CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING_APPROVAL);
         assertThat(order.getNextAttemptAt()).isNull();
@@ -36,7 +36,7 @@ class CustomerOrderTest {
 
     @Test
     void orderWithoutApprovalIsReadyImmediately() {
-        CustomerOrder order = order(List.of());
+        final CustomerOrder order = order(List.of());
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.READY_FOR_FULFILMENT);
         assertThat(order.getNextAttemptAt()).isEqualTo(NOW);
@@ -44,7 +44,7 @@ class CustomerOrderTest {
 
     @Test
     void approvalRecordsTheAgentAndMakesTheOrderReady() {
-        CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
+        final CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
 
         order.approve("agent1", "checked ID", NOW.plusSeconds(60));
 
@@ -55,7 +55,7 @@ class CustomerOrderTest {
 
     @Test
     void aDecidedOrderCannotBeDecidedAgain() {
-        CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
+        final CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
         order.reject("agent1", "failed the credit check", NOW);
 
         assertThatThrownBy(() -> order.approve("agent2", null, NOW))
@@ -71,7 +71,7 @@ class CustomerOrderTest {
 
     @Test
     void temporaryFulfilmentFailureKeepsTheOrderReadyWithALaterAttempt() {
-        CustomerOrder order = order(List.of());
+        final CustomerOrder order = order(List.of());
 
         order.recordFailedAttempt("HTTP 503", NOW.plusSeconds(10), NOW);
 
@@ -82,9 +82,9 @@ class CustomerOrderTest {
 
     @Test
     void submittedAndFailedAreTerminal() {
-        CustomerOrder submitted = order(List.of());
+        final CustomerOrder submitted = order(List.of());
         submitted.markSubmitted("FUL-1", NOW);
-        CustomerOrder failed = order(List.of());
+        final CustomerOrder failed = order(List.of());
         failed.markFulfilmentFailed("HTTP 422", NOW);
 
         assertThat(submitted.getFulfilmentReference()).isEqualTo("FUL-1");
@@ -94,7 +94,7 @@ class CustomerOrderTest {
 
     @Test
     void installationIsExpiredOnOrAfterThePreferredDate() {
-        var installation = new Installation(LocalDate.of(2026, 11, 9), "MORNING", ADDRESS);
+        final var installation = new Installation(LocalDate.of(2026, 11, 9), "MORNING", ADDRESS);
 
         assertThat(installation.isExpiredOn(LocalDate.of(2026, 11, 8))).isFalse();
         assertThat(installation.isExpiredOn(LocalDate.of(2026, 11, 9))).isTrue();
@@ -102,7 +102,7 @@ class CustomerOrderTest {
 
     @Test
     void preferredSlotExpiryIsDecidedOnceSoRetriesSendTheSameBody() {
-        CustomerOrder order = order(List.of());
+        final CustomerOrder order = order(List.of());
 
         assertThat(order.preferredSlotExpired(LocalDate.of(2026, 11, 8))).isFalse();
         assertThat(order.preferredSlotExpired(LocalDate.of(2026, 11, 10))).isFalse();
@@ -110,7 +110,7 @@ class CustomerOrderTest {
 
     @Test
     void longErrorsAreTruncatedToFitTheirColumns() {
-        CustomerOrder order = order(List.of());
+        final CustomerOrder order = order(List.of());
 
         order.recordFailedAttempt("x".repeat(1000), NOW, NOW);
 

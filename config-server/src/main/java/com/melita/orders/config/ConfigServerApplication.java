@@ -13,13 +13,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableConfigServer
 public class ConfigServerApplication {
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         SpringApplication.run(ConfigServerApplication.class, args);
     }
 
     /** Configuration is served only to authenticated services. CSRF is off: no browser sessions or cookies. */
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    SecurityFilterChain securityFilterChain(final HttpSecurity http) {
         return http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

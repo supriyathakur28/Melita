@@ -44,20 +44,20 @@ public final class FakeFulfilment {
     }
 
     /** The next calls for this order answer with these statuses, in order; afterwards 201. */
-    public void script(String orderId, Integer... statuses) {
+    public void script(final String orderId, final Integer... statuses) {
         scripted.put(orderId, new ConcurrentLinkedQueue<>(List.of(statuses)));
     }
 
-    public List<Received> receivedFor(String orderId) {
+    public List<Received> receivedFor(final String orderId) {
         return received.stream().filter(r -> orderId.equals(r.idempotencyKey())).toList();
     }
 
-    private void fulfilment(HttpExchange exchange) throws IOException {
-        String key = exchange.getRequestHeaders().getFirst("Idempotency-Key");
-        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+    private void fulfilment(final HttpExchange exchange) throws IOException {
+        final String key = exchange.getRequestHeaders().getFirst("Idempotency-Key");
+        final String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         received.add(new Received(key, exchange.getRequestHeaders().getFirst("Authorization"), body));
-        Queue<Integer> statuses = scripted.get(key);
-        Integer status = statuses == null ? null : statuses.poll();
+        final Queue<Integer> statuses = scripted.get(key);
+        final Integer status = statuses == null ? null : statuses.poll();
         if (status != null) {
             respond(exchange, status, "{\"title\":\"scripted\"}");
         } else {
@@ -65,8 +65,8 @@ public final class FakeFulfilment {
         }
     }
 
-    private static void respond(HttpExchange exchange, int status, String json) throws IOException {
-        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+    private static void respond(final HttpExchange exchange, final int status, final String json) throws IOException {
+        final byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json");
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream out = exchange.getResponseBody()) {

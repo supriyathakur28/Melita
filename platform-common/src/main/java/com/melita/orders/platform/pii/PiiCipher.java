@@ -25,24 +25,24 @@ public class PiiCipher {
     private final SecretKey key;
     private final SecureRandom random = new SecureRandom();
 
-    public PiiCipher(String base64Key) {
-        byte[] bytes = Base64.getDecoder().decode(base64Key);
+    public PiiCipher(final String base64Key) {
+        final byte[] bytes = Base64.getDecoder().decode(base64Key);
         if (bytes.length != 32) {
             throw new IllegalArgumentException("The PII encryption key must be 32 bytes (base64), got " + bytes.length);
         }
         this.key = new SecretKeySpec(bytes, "AES");
     }
 
-    public String encrypt(String plaintext) {
+    public String encrypt(final String plaintext) {
         if (plaintext == null) {
             return null;
         }
         try {
-            byte[] iv = new byte[IV_BYTES];
+            final byte[] iv = new byte[IV_BYTES];
             random.nextBytes(iv);
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            final Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
-            byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+            final byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
             return PREFIX + Base64.getEncoder().encodeToString(
                     ByteBuffer.allocate(iv.length + ciphertext.length).put(iv).put(ciphertext).array());
         } catch (GeneralSecurityException e) {
@@ -50,7 +50,7 @@ public class PiiCipher {
         }
     }
 
-    public String decrypt(String stored) {
+    public String decrypt(final String stored) {
         if (stored == null) {
             return null;
         }
@@ -58,8 +58,8 @@ public class PiiCipher {
             throw new IllegalStateException("Unknown encryption version");
         }
         try {
-            byte[] data = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
-            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            final byte[] data = Base64.getDecoder().decode(stored.substring(PREFIX.length()));
+            final Cipher cipher = Cipher.getInstance(ALGORITHM);
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, data, 0, IV_BYTES));
             return new String(cipher.doFinal(data, IV_BYTES, data.length - IV_BYTES), StandardCharsets.UTF_8);
         } catch (GeneralSecurityException | IllegalArgumentException e) {

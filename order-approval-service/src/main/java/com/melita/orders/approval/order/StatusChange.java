@@ -46,8 +46,8 @@ public class StatusChange {
     protected StatusChange() {
     }
 
-    StatusChange(CustomerOrder order, OrderStatus fromStatus, OrderStatus toStatus, String actor, String reason,
-                 Instant occurredAt) {
+    StatusChange(final CustomerOrder order, final OrderStatus fromStatus, final OrderStatus toStatus,
+                 final String actor, final String reason, final Instant occurredAt) {
         this.order = order;
         this.fromStatus = fromStatus;
         this.toStatus = toStatus;

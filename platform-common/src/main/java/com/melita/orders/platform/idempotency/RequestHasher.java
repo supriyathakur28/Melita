@@ -20,7 +20,7 @@ public class RequestHasher {
 
     private final JsonMapper canonical;
 
-    public RequestHasher(JsonMapper jsonMapper) {
+    public RequestHasher(final JsonMapper jsonMapper) {
         this.canonical = jsonMapper.rebuild()
                 .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
                 .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
@@ -28,8 +28,8 @@ public class RequestHasher {
                 .build();
     }
 
-    public String hash(Object request) {
-        byte[] json = canonical.writeValueAsString(request).getBytes(StandardCharsets.UTF_8);
+    public String hash(final Object request) {
+        final byte[] json = canonical.writeValueAsString(request).getBytes(StandardCharsets.UTF_8);
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(json));
         } catch (NoSuchAlgorithmException e) {

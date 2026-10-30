@@ -30,12 +30,13 @@ public @interface ValidIdentityDocument {
         private static final Pattern PASSPORT = Pattern.compile("[A-Z0-9]{6,20}");
 
         @Override
-        public boolean isValid(PlaceOrderRequest.IdentityDocumentRequest document, ConstraintValidatorContext context) {
+        public boolean isValid(final PlaceOrderRequest.IdentityDocumentRequest document,
+                               final ConstraintValidatorContext context) {
             if (document == null || document.type() == null || document.number() == null) {
                 return true;
             }
-            Pattern pattern = document.type() == PlaceOrderRequest.DocumentType.ID_CARD ? ID_CARD : PASSPORT;
-            boolean valid = pattern.matcher(document.number()).matches();
+            final Pattern pattern = document.type() == PlaceOrderRequest.DocumentType.ID_CARD ? ID_CARD : PASSPORT;
+            final boolean valid = pattern.matcher(document.number()).matches();
             if (!valid) {
                 context.disableDefaultConstraintViolation();
                 context.buildConstraintViolationWithTemplate(context.getDefaultConstraintMessageTemplate())

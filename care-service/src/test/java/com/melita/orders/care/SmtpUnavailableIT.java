@@ -18,7 +18,7 @@ import static org.awaitility.Awaitility.await;
 class SmtpUnavailableIT extends CareIntegrationTest {
 
     @DynamicPropertySource
-    static void deadSmtp(DynamicPropertyRegistry registry) {
+    static void deadSmtp(final DynamicPropertyRegistry registry) {
         registry.add("spring.mail.host", () -> "localhost");
         registry.add("spring.mail.port", () -> 1);
     }
@@ -28,14 +28,14 @@ class SmtpUnavailableIT extends CareIntegrationTest {
 
     @Test
     void failedEmailIsRetriedThenDeadLetteredAndMarkedFailed() {
-        var order = EmailComposerTest.order();
+        final var order = EmailComposerTest.order();
         publish(OrderEvents.ORDER_ACCEPTED, EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req", Instant.now(), order));
 
-        Message dead = rabbitTemplate.receive("care.order-events.dlq", 20_000);
+        final Message dead = rabbitTemplate.receive("care.order-events.dlq", 20_000);
         assertThat(dead).isNotNull();
         await().atMost(Duration.ofSeconds(5)).until(() -> notifications.findByOrderId(order.orderId().toString())
                 .stream().anyMatch(n -> n.getStatus() == Notification.Status.FAILED));
-        Notification failed = notifications.findByOrderId(order.orderId().toString()).getFirst();
+        final Notification failed = notifications.findByOrderId(order.orderId().toString()).getFirst();
         assertThat(failed.getAttempts()).as("first try plus one listener retry").isEqualTo(2);
         assertThat(failed.getLastError()).isNotBlank();
     }

@@ -15,8 +15,8 @@ final class PartnerIds {
     private PartnerIds() {
     }
 
-    static String from(Jwt jwt) {
-        String partnerId = jwt == null ? null : jwt.getClaimAsString(CLAIM);
+    static String from(final Jwt jwt) {
+        final String partnerId = jwt == null ? null : jwt.getClaimAsString(CLAIM);
         if (partnerId == null || partnerId.isBlank()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "PARTNER_NOT_CONFIGURED",
                     "The token does not identify a partner");

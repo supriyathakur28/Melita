@@ -17,13 +17,13 @@ class RequestHasherTest {
 
     @Test
     void keyOrderAndWhitespaceDoNotChangeTheHash() {
-        String a = """
+        final String a = """
                 {"externalReference":"ERP-1","items":[{"product":"MOBILE","packageCode":"MOBILE_PREPAID"}],
                  "customer":{"firstName":"Maria","lastName":"Borg","dateOfBirth":"1990-04-12",
                   "email":"maria.borg@example.com","mobileNumber":"+35679123456",
                   "identityDocument":{"type":"ID_CARD","number":"123456M"},
                   "address":{"line1":"12, Triq il-Kbira","locality":"Mosta","postcode":"MST 1234"}}}""";
-        String b = """
+        final String b = """
                 {  "customer" : { "address":{"postcode":"MST 1234","locality":"Mosta","line1":"12, Triq il-Kbira"},
                    "identityDocument":{"number":"123456M","type":"ID_CARD"}, "mobileNumber":"+35679123456",
                    "email":"maria.borg@example.com","dateOfBirth":"1990-04-12","lastName":"Borg","firstName":"Maria"},
@@ -36,8 +36,8 @@ class RequestHasherTest {
 
     @Test
     void differentContentGivesADifferentHash() {
-        var first = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 9));
-        var second = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 10));
+        final var first = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 9));
+        final var second = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 10));
 
         assertThat(hasher.hash(first)).isNotEqualTo(hasher.hash(second));
     }

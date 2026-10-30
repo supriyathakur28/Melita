@@ -18,21 +18,24 @@ class ConfigRepoFilesTest {
 
     @Test
     void everyConfigFileIsValidYaml() throws IOException {
-        List<Path> files;
-        try (Stream<Path> stream = Files.list(CONFIG_REPO)) {
-            files = stream.filter(p -> p.toString().endsWith(".yml")).toList();
-        }
+        final List<Path> files = yamlFiles();
         assertThat(files).isNotEmpty();
-        for (Path file : files) {
+        for (final Path file : files) {
             new Yaml().loadAll(Files.readString(file)).forEach(document -> { });
+        }
+    }
+
+    private static List<Path> yamlFiles() throws IOException {
+        try (Stream<Path> stream = Files.list(CONFIG_REPO)) {
+            return stream.filter(p -> p.toString().endsWith(".yml")).toList();
         }
     }
 
     @Test
     void containsNoLiteralSecrets() throws IOException {
         try (Stream<Path> stream = Files.list(CONFIG_REPO)) {
-            for (Path file : stream.toList()) {
-                for (String line : Files.readAllLines(file)) {
+            for (final Path file : stream.toList()) {
+                for (final String line : Files.readAllLines(file)) {
                     if (line.matches("\\s*(password|secret|client-secret|key)\\s*:.*")) {
                         assertThat(line).as("%s must take secrets from the environment", file).contains("${");
                     }

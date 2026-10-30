@@ -21,13 +21,13 @@ public class InboxGuard {
     private final JdbcTemplate jdbc;
     private final Clock clock;
 
-    public InboxGuard(JdbcTemplate jdbc, Clock clock) {
+    public InboxGuard(final JdbcTemplate jdbc, final Clock clock) {
         this.jdbc = jdbc;
         this.clock = clock;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public boolean firstDelivery(String messageId) {
+    public boolean firstDelivery(final String messageId) {
         try {
             jdbc.update("insert into processed_message (message_id, processed_at) values (?, ?)",
                     messageId, Timestamp.from(clock.instant()));

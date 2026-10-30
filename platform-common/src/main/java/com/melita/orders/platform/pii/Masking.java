@@ -9,7 +9,7 @@ public final class Masking {
     }
 
     /** {@code 123456M} becomes {@code ****56M}; values of up to three characters are fully masked. */
-    public static String mask(String value) {
+    public static String mask(final String value) {
         if (value == null) {
             return null;
         }

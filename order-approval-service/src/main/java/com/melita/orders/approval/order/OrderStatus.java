@@ -22,7 +22,7 @@ public enum OrderStatus {
             SUBMITTED, EnumSet.noneOf(OrderStatus.class),
             FULFILMENT_FAILED, EnumSet.noneOf(OrderStatus.class));
 
-    public boolean canTransitionTo(OrderStatus target) {
+    public boolean canTransitionTo(final OrderStatus target) {
         return ALLOWED.get(this).contains(target);
     }
 

@@ -52,7 +52,7 @@ class OrderApiWebTest {
         return jsonMapper.writeValueAsString(TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 9)));
     }
 
-    private static JwtRequestPostProcessor partner(String... scopes) {
+    private static JwtRequestPostProcessor partner(final String... scopes) {
         return jwt().jwt(j -> j.claim("partner_id", "erp-partner"))
                 .authorities(java.util.Arrays.stream(scopes)
                         .map(s -> (org.springframework.security.core.GrantedAuthority) new SimpleGrantedAuthority("SCOPE_" + s))
@@ -107,7 +107,7 @@ class OrderApiWebTest {
 
     @Test
     void invalidBodyIs400WithFieldErrors() throws Exception {
-        String body = validBody().replace("+35679123456", "79123456").replace("MST 1234", "12345");
+        final String body = validBody().replace("+35679123456", "79123456").replace("MST 1234", "12345");
 
         mvc.perform(post("/api/v1/orders").with(partner("orders:write")).header("Idempotency-Key", "key-00000001")
                         .contentType(MediaType.APPLICATION_JSON).content(body))

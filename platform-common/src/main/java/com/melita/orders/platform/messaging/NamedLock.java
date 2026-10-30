@@ -23,12 +23,12 @@ public class NamedLock {
 
     private final DataSource dataSource;
 
-    public NamedLock(DataSource dataSource) {
+    public NamedLock(final DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
     /** @return {@code true} if the lock was obtained and the job ran; {@code false} if another instance holds it. */
-    public boolean runIfAvailable(String name, Runnable job) {
+    public boolean runIfAvailable(final String name, final Runnable job) {
         try (Connection connection = dataSource.getConnection()) {
             if (!acquire(connection, name)) {
                 return false;
@@ -45,7 +45,7 @@ public class NamedLock {
         }
     }
 
-    private static boolean acquire(Connection connection, String name) throws SQLException {
+    private static boolean acquire(final Connection connection, final String name) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("select get_lock(?, 0)")) {
             statement.setString(1, name);
             try (ResultSet result = statement.executeQuery()) {
@@ -54,7 +54,7 @@ public class NamedLock {
         }
     }
 
-    private static void release(Connection connection, String name) throws SQLException {
+    private static void release(final Connection connection, final String name) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("select release_lock(?)")) {
             statement.setString(1, name);
             statement.executeQuery().close();

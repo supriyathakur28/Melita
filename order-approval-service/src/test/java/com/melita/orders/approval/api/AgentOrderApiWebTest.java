@@ -44,7 +44,7 @@ class AgentOrderApiWebTest {
     @MockitoBean
     ApprovalPolicy policy;
 
-    private static JwtRequestPostProcessor user(String username, String... roles) {
+    private static JwtRequestPostProcessor user(final String username, final String... roles) {
         return jwt().jwt(j -> j.claim("preferred_username", username))
                 .authorities(java.util.Arrays.stream(roles)
                         .map(r -> (org.springframework.security.core.GrantedAuthority) new SimpleGrantedAuthority("ROLE_" + r))
@@ -128,7 +128,7 @@ class AgentOrderApiWebTest {
 
     @Test
     void realmRolesFromKeycloakBecomeSpringRoles() {
-        var token = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("t").header("alg", "none")
+        final var token = org.springframework.security.oauth2.jwt.Jwt.withTokenValue("t").header("alg", "none")
                 .claim("realm_access", java.util.Map.of("roles", java.util.List.of("AGENT", "SUPERVISOR"))).build();
 
         org.assertj.core.api.Assertions.assertThat(SecurityConfig.realmRoles(token))

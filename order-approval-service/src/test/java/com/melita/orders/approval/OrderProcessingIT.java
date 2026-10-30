@@ -25,13 +25,13 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
-    private OrderStatus statusOf(UUID orderId) {
+    private OrderStatus statusOf(final UUID orderId) {
         return orders.findById(orderId).map(o -> o.getStatus()).orElse(null);
     }
 
     @Test
     void orderWithAPackageNeedingApprovalIsHeldAndAgentsAreAsked() {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         publishAccepted(TestOrderEvents.accepted(orderId,
                 List.of(TestOrderEvents.item("MOBILE", "MOBILE_POSTPAID")), null));
 
@@ -42,11 +42,11 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
 
     @Test
     void identityDocumentNumberIsEncryptedAtRest() {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(TestOrderEvents.item("MOBILE", "MOBILE_POSTPAID")), null));
         await().atMost(Duration.ofSeconds(10)).until(() -> statusOf(orderId) != null);
 
-        String stored = jdbc.queryForObject("select id_document_number from customer_order where id = ?",
+        final String stored = jdbc.queryForObject("select id_document_number from customer_order where id = ?",
                 String.class, orderId.toString());
         assertThat(stored).startsWith("v1:").doesNotContain("123456M");
         assertThat(orders.findById(orderId).orElseThrow().getCustomer().idDocumentNumber()).isEqualTo("123456M");
@@ -54,13 +54,13 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
 
     @Test
     void orderNotNeedingApprovalIsSubmittedToFulfilmentWithTokenAndIdempotencyKey() {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(
                 TestOrderEvents.item("INTERNET", "INTERNET_250MBPS"), TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")),
                 LocalDate.now().plusDays(14)));
 
         await().atMost(Duration.ofSeconds(15)).until(() -> statusOf(orderId) == OrderStatus.SUBMITTED);
-        var calls = FULFILMENT.receivedFor(orderId.toString());
+        final var calls = FULFILMENT.receivedFor(orderId.toString());
         assertThat(calls).hasSize(1);
         assertThat(calls.getFirst().authorization()).isEqualTo("Bearer test-token");
         assertThat(calls.getFirst().body()).contains("\"idDocumentNumber\":\"123456M\"", "\"preferredSlotExpired\":false");
@@ -70,8 +70,8 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
 
     @Test
     void duplicateDeliveryCreatesOneOrder() {
-        UUID orderId = UUID.randomUUID();
-        var event = publishAccepted(TestOrderEvents.accepted(orderId,
+        final UUID orderId = UUID.randomUUID();
+        final var event = publishAccepted(TestOrderEvents.accepted(orderId,
                 List.of(TestOrderEvents.item("MOBILE", "MOBILE_POSTPAID")), null));
         publishRaw(event.eventId().toString(), jsonMapper.writeValueAsString(event));
         publishRaw(event.eventId().toString(), jsonMapper.writeValueAsString(event));
@@ -88,14 +88,14 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
     void unreadableMessageGoesToTheDeadLetterQueue() {
         publishRaw("poison-" + UUID.randomUUID(), "{\"this is\": not json");
 
-        Message dead = rabbitTemplate.receive("order-approval.order-accepted.dlq", 15_000);
+        final Message dead = rabbitTemplate.receive("order-approval.order-accepted.dlq", 15_000);
         assertThat(dead).isNotNull();
         assertThat(new String(dead.getBody(), StandardCharsets.UTF_8)).contains("not json");
     }
 
     @Test
     void temporaryFulfilmentFailureIsRetriedWithTheSameKey() {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         FULFILMENT.script(orderId.toString(), 503);
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")), null));
 
@@ -107,7 +107,7 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
 
     @Test
     void successWithoutAUsableBodyIsTreatedAsUnknownAndRetried() {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         FULFILMENT.script(orderId.toString(), 200);
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")), null));
 
@@ -117,7 +117,7 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
 
     @Test
     void rejectedByFulfilmentFailsTheOrderWithoutRetry() {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         FULFILMENT.script(orderId.toString(), 422);
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")), null));
 
@@ -129,7 +129,7 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
 
     @Test
     void retriesStopAfterTheConfiguredNumberOfAttempts() {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         FULFILMENT.script(orderId.toString(), 503, 503, 503, 503);
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")), null));
 

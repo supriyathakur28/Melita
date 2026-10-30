@@ -16,9 +16,10 @@ import java.io.IOException;
 public class RequestIdFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response,
+                                    final FilterChain chain)
             throws ServletException, IOException {
-        String requestId = RequestIds.acceptOrGenerate(request.getHeader(RequestIds.HEADER));
+        final String requestId = RequestIds.acceptOrGenerate(request.getHeader(RequestIds.HEADER));
         MDC.put(RequestIds.MDC_KEY, requestId);
         response.setHeader(RequestIds.HEADER, requestId);
         try {

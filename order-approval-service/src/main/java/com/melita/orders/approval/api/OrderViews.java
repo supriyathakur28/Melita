@@ -43,9 +43,9 @@ public final class OrderViews {
     public record History(OrderStatus from, OrderStatus to, String actor, String reason, Instant at) {
     }
 
-    static Detail detail(CustomerOrder order, List<String> warnings) {
-        var c = order.getCustomer();
-        var i = order.getInstallation();
+    static Detail detail(final CustomerOrder order, final List<String> warnings) {
+        final var c = order.getCustomer();
+        final var i = order.getInstallation();
         return new Detail(order.getId(), order.getPartnerId(), order.getExternalReference(), order.getStatus(),
                 new Customer(c.firstName(), c.lastName(), c.dateOfBirth(), c.email(), c.mobileNumber(),
                         c.idDocumentType(), c.maskedIdDocumentNumber(), c.address()),

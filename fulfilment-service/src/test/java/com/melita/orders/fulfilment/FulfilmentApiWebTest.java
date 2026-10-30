@@ -46,7 +46,7 @@ class FulfilmentApiWebTest {
     @MockitoBean
     FulfilmentOrderService service;
 
-    private MockHttpServletRequestBuilder submit(String body) {
+    private MockHttpServletRequestBuilder submit(final String body) {
         return post("/api/v1/fulfilment-orders").header("Idempotency-Key", ORDER_ID.toString())
                 .contentType(MediaType.APPLICATION_JSON).content(body);
     }
@@ -94,7 +94,7 @@ class FulfilmentApiWebTest {
 
     @Test
     void incompleteOrderIs400() throws Exception {
-        String withoutItems = body().replaceAll("\"items\":\\[[^]]*]", "\"items\":[]");
+        final String withoutItems = body().replaceAll("\"items\":\\[[^]]*]", "\"items\":[]");
 
         mvc.perform(submit(withoutItems).with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_fulfilment:submit"))))
                 .andExpect(status().isBadRequest())

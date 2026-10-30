@@ -33,12 +33,12 @@ class ApplicationConfig {
     }
 
     @Bean
-    PiiCipher piiCipher(@Value("${pii.encryption-key}") String key) {
+    PiiCipher piiCipher(@Value("${pii.encryption-key}") final String key) {
         return new PiiCipher(key);
     }
 
     @Bean
-    Gauge outboxPendingGauge(MeterRegistry registry, OutboxRelay relay) {
+    Gauge outboxPendingGauge(final MeterRegistry registry, final OutboxRelay relay) {
         return Gauge.builder("outbox.pending", relay, OutboxRelay::pendingCount)
                 .description("Events written to the outbox but not yet confirmed by the broker")
                 .register(registry);

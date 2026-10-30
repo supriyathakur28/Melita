@@ -48,7 +48,7 @@ class FulfilmentServiceIT {
     @Autowired
     JdbcTemplate jdbc;
 
-    private MvcResult submit(String key, Object body) throws Exception {
+    private MvcResult submit(final String key, final Object body) throws Exception {
         return mvc.perform(post("/api/v1/fulfilment-orders")
                         .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_fulfilment:submit")))
                         .header("Idempotency-Key", key)
@@ -56,20 +56,20 @@ class FulfilmentServiceIT {
                 .andReturn();
     }
 
-    private String reference(MvcResult result) throws Exception {
+    private String reference(final MvcResult result) throws Exception {
         return jsonMapper.readTree(result.getResponse().getContentAsString()).get("fulfilmentReference").asString();
     }
 
     @Test
     void approvedOrderIsStoredAsAFulfilmentOrderWithTheIdNumberEncrypted() throws Exception {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
 
-        MvcResult created = submit(orderId.toString(), TestRequests.request(orderId));
+        final MvcResult created = submit(orderId.toString(), TestRequests.request(orderId));
 
         assertThat(created.getResponse().getStatus()).isEqualTo(201);
-        String reference = reference(created);
+        final String reference = reference(created);
         assertThat(reference).matches("FUL-[0-9A-F]{10}");
-        String stored = jdbc.queryForObject("select id_document_number from fulfilment_order where order_id = ?",
+        final String stored = jdbc.queryForObject("select id_document_number from fulfilment_order where order_id = ?",
                 String.class, orderId.toString());
         assertThat(stored).startsWith("v1:").doesNotContain("123456M");
 
@@ -83,10 +83,10 @@ class FulfilmentServiceIT {
 
     @Test
     void retryWithTheSameKeyAndBodyReturnsTheSameOrder() throws Exception {
-        UUID orderId = UUID.randomUUID();
-        String first = reference(submit(orderId.toString(), TestRequests.request(orderId)));
+        final UUID orderId = UUID.randomUUID();
+        final String first = reference(submit(orderId.toString(), TestRequests.request(orderId)));
 
-        MvcResult retry = submit(orderId.toString(), TestRequests.request(orderId));
+        final MvcResult retry = submit(orderId.toString(), TestRequests.request(orderId));
 
         assertThat(retry.getResponse().getStatus()).isEqualTo(200);
         assertThat(reference(retry)).isEqualTo(first);
@@ -96,13 +96,13 @@ class FulfilmentServiceIT {
 
     @Test
     void sameKeyWithADifferentBodyIs409() throws Exception {
-        UUID orderId = UUID.randomUUID();
+        final UUID orderId = UUID.randomUUID();
         submit(orderId.toString(), TestRequests.request(orderId));
-        var changed = TestRequests.request(orderId);
-        changed = new com.melita.orders.fulfilment.api.FulfilmentOrderRequest(changed.orderId(), "CHANGED-REF",
-                changed.partnerId(), changed.customer(), changed.installation(), changed.items());
+        final var original = TestRequests.request(orderId);
+        final var changed = new com.melita.orders.fulfilment.api.FulfilmentOrderRequest(original.orderId(),
+                "CHANGED-REF", original.partnerId(), original.customer(), original.installation(), original.items());
 
-        MvcResult result = submit(orderId.toString(), changed);
+        final MvcResult result = submit(orderId.toString(), changed);
 
         assertThat(result.getResponse().getStatus()).isEqualTo(409);
         assertThat(result.getResponse().getContentAsString()).contains("IDEMPOTENCY_KEY_REUSED");
@@ -110,10 +110,10 @@ class FulfilmentServiceIT {
 
     @Test
     void sameOrderUnderAnotherKeyIs409() throws Exception {
-        UUID orderId = UUID.randomUUID();
-        String reference = reference(submit(orderId.toString(), TestRequests.request(orderId)));
+        final UUID orderId = UUID.randomUUID();
+        final String reference = reference(submit(orderId.toString(), TestRequests.request(orderId)));
 
-        MvcResult result = submit("another-key-" + orderId, TestRequests.request(orderId));
+        final MvcResult result = submit("another-key-" + orderId, TestRequests.request(orderId));
 
         assertThat(result.getResponse().getStatus()).isEqualTo(409);
         assertThat(result.getResponse().getContentAsString()).contains("ORDER_ALREADY_SUBMITTED", reference);
@@ -121,22 +121,22 @@ class FulfilmentServiceIT {
 
     @Test
     void parallelSubmissionsWithOneKeyCreateOneOrder() throws Exception {
-        UUID orderId = UUID.randomUUID();
-        int callers = 6;
-        CountDownLatch start = new CountDownLatch(1);
-        List<Future<MvcResult>> futures = new ArrayList<>();
+        final UUID orderId = UUID.randomUUID();
+        final int callers = 6;
+        final CountDownLatch start = new CountDownLatch(1);
+        final List<Future<MvcResult>> futures = new ArrayList<>();
         try (ExecutorService pool = Executors.newFixedThreadPool(callers)) {
             for (int i = 0; i < callers; i++) {
-                Callable<MvcResult> call = () -> {
+                final Callable<MvcResult> call = () -> {
                     start.await();
                     return submit(orderId.toString(), TestRequests.request(orderId));
                 };
                 futures.add(pool.submit(call));
             }
             start.countDown();
-            List<String> references = new ArrayList<>();
-            for (Future<MvcResult> future : futures) {
-                MvcResult result = future.get();
+            final List<String> references = new ArrayList<>();
+            for (final Future<MvcResult> future : futures) {
+                final MvcResult result = future.get();
                 assertThat(result.getResponse().getStatus()).isIn(200, 201);
                 references.add(reference(result));
             }

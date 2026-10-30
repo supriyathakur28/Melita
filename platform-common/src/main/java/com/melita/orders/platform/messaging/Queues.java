@@ -1,7 +1,6 @@
 package com.melita.orders.platform.messaging;
 
 import com.melita.orders.events.OrderEvents;
-import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Declarable;
 import org.springframework.amqp.core.Declarables;
@@ -11,8 +10,8 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 /** Declarations shared by producers and consumers. Declaring is idempotent, so start-up order does not matter. */
 public final class Queues {
@@ -33,23 +32,21 @@ public final class Queues {
      * key is set explicitly: without it, a dead-lettered message keeps its original routing key and matches no
      * binding on the dead-letter exchange.
      */
-    public static Declarables consumerQueue(String queueName, List<String> routingKeys) {
-        TopicExchange events = eventsExchange();
-        DirectExchange deadLetters = deadLetterExchange();
-        String dlqName = queueName + ".dlq";
+    public static Declarables consumerQueue(final String queueName, final List<String> routingKeys) {
+        final TopicExchange events = eventsExchange();
+        final DirectExchange deadLetters = deadLetterExchange();
+        final String dlqName = queueName + ".dlq";
 
-        Queue queue = QueueBuilder.durable(queueName).quorum()
+        final Queue queue = QueueBuilder.durable(queueName).quorum()
                 .deadLetterExchange(OrderEvents.DEAD_LETTER_EXCHANGE)
                 .deadLetterRoutingKey(dlqName)
                 .build();
-        Queue dlq = QueueBuilder.durable(dlqName).quorum().build();
+        final Queue dlq = QueueBuilder.durable(dlqName).quorum().build();
 
-        List<Declarable> declarables = new ArrayList<>(List.of(events, deadLetters, queue, dlq,
-                BindingBuilder.bind(dlq).to(deadLetters).with(dlqName)));
-        for (String routingKey : routingKeys) {
-            Binding binding = BindingBuilder.bind(queue).to(events).with(routingKey);
-            declarables.add(binding);
-        }
-        return new Declarables(declarables);
+        final Stream<Declarable> infrastructure = Stream.of(events, deadLetters, queue, dlq,
+                BindingBuilder.bind(dlq).to(deadLetters).with(dlqName));
+        final Stream<Declarable> bindings = routingKeys.stream()
+                .map(routingKey -> BindingBuilder.bind(queue).to(events).with(routingKey));
+        return new Declarables(Stream.concat(infrastructure, bindings).toList());
     }
 }

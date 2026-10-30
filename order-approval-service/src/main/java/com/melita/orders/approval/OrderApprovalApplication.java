@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Import({WebSupportConfiguration.class, SecuritySupportConfiguration.class})
 public class OrderApprovalApplication {
 
-    public static void main(String[] args) {
+    public static void main(final String[] args) {
         SpringApplication.run(OrderApprovalApplication.class, args);
     }
 }

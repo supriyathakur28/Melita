@@ -16,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -45,7 +44,8 @@ public class OutboxRelay {
     private final NamedLock namedLock;
     private final Clock clock;
 
-    public OutboxRelay(JdbcTemplate jdbc, RabbitTemplate rabbitTemplate, NamedLock namedLock, Clock clock) {
+    public OutboxRelay(final JdbcTemplate jdbc, final RabbitTemplate rabbitTemplate, final NamedLock namedLock,
+                       final Clock clock) {
         this.jdbc = jdbc;
         this.rabbitTemplate = rabbitTemplate;
         this.namedLock = namedLock;
@@ -59,10 +59,10 @@ public class OutboxRelay {
 
     /** Publishes one batch. Package-visible for tests; production calls go through {@link #run()}. */
     int publishPending() {
-        List<OutboxRow> rows = jdbc.query("""
-                        select id, event_id, event_type, routing_key, correlation_id, payload
-                        from outbox_event where published_at is null order by id limit ?
-                        """,
+        final List<OutboxRow> rows = jdbc.query("""
+                select id, event_id, event_type, routing_key, correlation_id, payload
+                from outbox_event where published_at is null order by id limit ?
+                """,
                 (rs, i) -> new OutboxRow(rs.getLong("id"), rs.getString("event_id"), rs.getString("event_type"),
                         rs.getString("routing_key"), rs.getString("correlation_id"), rs.getString("payload")),
                 BATCH_SIZE);
@@ -70,15 +70,14 @@ public class OutboxRelay {
             return 0;
         }
 
-        List<Sent> sent = rows.stream().map(this::send).toList();
-        List<Long> confirmed = new ArrayList<>();
-        for (Sent s : sent) {
-            if (isConfirmed(s)) {
-                confirmed.add(s.row().id());
-            }
-        }
+        // Send the whole batch first, then wait for the confirms: the broker confirms them in parallel.
+        final List<Sent> sent = rows.stream().map(this::send).toList();
+        final List<Long> confirmed = sent.stream()
+                .filter(OutboxRelay::isConfirmed)
+                .map(s -> s.row().id())
+                .toList();
 
-        Timestamp now = Timestamp.from(clock.instant());
+        final Timestamp now = Timestamp.from(clock.instant());
         jdbc.batchUpdate("update outbox_event set published_at = ?, payload = null where id = ?",
                 confirmed, confirmed.size(), (ps, id) -> {
                     ps.setTimestamp(1, now);
@@ -90,18 +89,19 @@ public class OutboxRelay {
     /** Housekeeping: published rows are only needed for troubleshooting. */
     @Scheduled(cron = "${outbox.purge.cron:0 15 3 * * *}")
     public void purgePublished() {
-        Timestamp cutoff = Timestamp.from(clock.instant().minus(Duration.ofDays(7)));
-        int deleted = jdbc.update("delete from outbox_event where published_at < ?", cutoff);
+        final Timestamp cutoff = Timestamp.from(clock.instant().minus(Duration.ofDays(7)));
+        final int deleted = jdbc.update("delete from outbox_event where published_at < ?", cutoff);
         log.info("Purged {} published outbox rows", deleted);
     }
 
     public long pendingCount() {
-        Long count = jdbc.queryForObject("select count(*) from outbox_event where published_at is null", Long.class);
+        final Long count =
+                jdbc.queryForObject("select count(*) from outbox_event where published_at is null", Long.class);
         return count == null ? 0 : count;
     }
 
-    private Sent send(OutboxRow row) {
-        MessageProperties properties = new MessageProperties();
+    private Sent send(final OutboxRow row) {
+        final MessageProperties properties = new MessageProperties();
         properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
         properties.setContentEncoding(StandardCharsets.UTF_8.name());
         properties.setMessageId(row.eventId());
@@ -110,16 +110,16 @@ public class OutboxRelay {
         if (row.correlationId() != null) {
             properties.setHeader(OrderEvents.CORRELATION_HEADER, row.correlationId());
         }
-        Message message = MessageBuilder.withBody(row.payload().getBytes(StandardCharsets.UTF_8))
+        final Message message = MessageBuilder.withBody(row.payload().getBytes(StandardCharsets.UTF_8))
                 .andProperties(properties).build();
-        CorrelationData correlation = new CorrelationData(row.eventId());
+        final CorrelationData correlation = new CorrelationData(row.eventId());
         rabbitTemplate.send(OrderEvents.EXCHANGE, row.routingKey(), message, correlation);
         return new Sent(row, correlation);
     }
 
-    private static boolean isConfirmed(Sent sent) {
+    private static boolean isConfirmed(final Sent sent) {
         try {
-            CorrelationData.Confirm confirm = sent.correlation().getFuture()
+            final CorrelationData.Confirm confirm = sent.correlation().getFuture()
                     .get(CONFIRM_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             if (!confirm.ack()) {
                 log.warn("Broker nacked event {}: {}", sent.row().eventId(), confirm.reason());

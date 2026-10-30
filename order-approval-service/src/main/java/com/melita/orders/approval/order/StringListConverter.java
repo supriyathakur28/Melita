@@ -11,12 +11,12 @@ import java.util.List;
 public class StringListConverter implements AttributeConverter<List<String>, String> {
 
     @Override
-    public String convertToDatabaseColumn(List<String> values) {
+    public String convertToDatabaseColumn(final List<String> values) {
         return values == null || values.isEmpty() ? null : String.join(",", values);
     }
 
     @Override
-    public List<String> convertToEntityAttribute(String column) {
+    public List<String> convertToEntityAttribute(final String column) {
         return column == null || column.isBlank() ? List.of() : Arrays.asList(column.split(","));
     }
 }

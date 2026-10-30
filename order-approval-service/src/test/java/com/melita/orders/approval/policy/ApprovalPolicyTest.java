@@ -12,10 +12,10 @@ class ApprovalPolicyTest {
 
     @Test
     void matchesConfiguredPackagesAndProducts() {
-        var environment = new MockEnvironment()
+        final var environment = new MockEnvironment()
                 .withProperty("approval.required-packages[0]", "MOBILE_POSTPAID")
                 .withProperty("approval.required-products[0]", "TV");
-        var policy = new ApprovalPolicy(environment);
+        final var policy = new ApprovalPolicy(environment);
 
         assertThat(policy.reasonsFor(List.of(
                 TestOrderEvents.item("MOBILE", "MOBILE_POSTPAID"),
@@ -26,7 +26,7 @@ class ApprovalPolicyTest {
 
     @Test
     void noRulesMeansNoApproval() {
-        var policy = new ApprovalPolicy(new MockEnvironment());
+        final var policy = new ApprovalPolicy(new MockEnvironment());
 
         assertThat(policy.reasonsFor(List.of(TestOrderEvents.item("MOBILE", "MOBILE_POSTPAID")))).isEmpty();
     }

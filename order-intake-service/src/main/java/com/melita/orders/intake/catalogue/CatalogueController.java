@@ -13,7 +13,7 @@ class CatalogueController {
 
     private final CatalogueService catalogueService;
 
-    CatalogueController(CatalogueService catalogueService) {
+    CatalogueController(final CatalogueService catalogueService) {
         this.catalogueService = catalogueService;
     }
 

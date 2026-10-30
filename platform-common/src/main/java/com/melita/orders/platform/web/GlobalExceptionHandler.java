@@ -41,8 +41,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ApiException.class)
-    ResponseEntity<ProblemDetail> handleApi(ApiException ex) {
-        ProblemDetail problem = Problems.of(ex.status(), ex.code(), ex.status().getReasonPhrase(),
+    ResponseEntity<ProblemDetail> handleApi(final ApiException ex) {
+        final ProblemDetail problem = Problems.of(ex.status(), ex.code(), ex.status().getReasonPhrase(),
                 ex.getMessage(), ex.violations());
         ex.properties().forEach(problem::setProperty);
         return ResponseEntity.status(ex.status()).body(problem);
@@ -50,12 +50,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     /** {@code @PreAuthorize} failures inside a controller reach MVC rather than the security filter chain. */
     @ExceptionHandler(AccessDeniedException.class)
-    ResponseEntity<ProblemDetail> handleAccessDenied(AccessDeniedException ex) {
+    ResponseEntity<ProblemDetail> handleAccessDenied(final AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(SecurityProblems.forbidden());
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    ResponseEntity<ProblemDetail> handleAuthentication(AuthenticationException ex) {
+    ResponseEntity<ProblemDetail> handleAuthentication(final AuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(SecurityProblems.unauthorized());
     }
 
@@ -64,14 +64,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * timeout, deadlock victim): the client should re-read and try again.
      */
     @ExceptionHandler({OptimisticLockingFailureException.class, PessimisticLockingFailureException.class})
-    ResponseEntity<ProblemDetail> handleConcurrentUpdate(RuntimeException ex) {
+    ResponseEntity<ProblemDetail> handleConcurrentUpdate(final RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Problems.of(HttpStatus.CONFLICT, "CONCURRENT_UPDATE",
                 "Conflict", "The resource was changed by another request. Reload it and try again."));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException ex) {
-        List<FieldViolation> errors = ex.getConstraintViolations().stream()
+    ResponseEntity<ProblemDetail> handleConstraintViolation(final ConstraintViolationException ex) {
+        final List<FieldViolation> errors = ex.getConstraintViolations().stream()
                 .map(v -> new FieldViolation(v.getPropertyPath().toString(), null, v.getMessage()))
                 .sorted(Comparator.comparing(FieldViolation::field))
                 .toList();
@@ -79,7 +79,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ProblemDetail> handleUnexpected(Exception ex) {
+    ResponseEntity<ProblemDetail> handleUnexpected(final Exception ex) {
         log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Problems.of(
                 HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal Server Error",
@@ -87,10 +87,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
-                                                                  HttpHeaders headers, HttpStatusCode status,
-                                                                  WebRequest request) {
-        List<FieldViolation> errors = ex.getBindingResult().getAllErrors().stream()
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(final MethodArgumentNotValidException ex,
+                                                                  final HttpHeaders headers,
+                                                                  final HttpStatusCode status,
+                                                                  final WebRequest request) {
+        final List<FieldViolation> errors = ex.getBindingResult().getAllErrors().stream()
                 .map(error -> error instanceof org.springframework.validation.FieldError fieldError
                         ? new FieldViolation(fieldError.getField(), fieldError.getCode(), fieldError.getDefaultMessage())
                         : new FieldViolation(error.getObjectName(), error.getCode(), error.getDefaultMessage()))
@@ -100,11 +101,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleHandlerMethodValidationException(HandlerMethodValidationException ex,
-                                                                             HttpHeaders headers,
-                                                                             HttpStatusCode status,
-                                                                             WebRequest request) {
-        List<FieldViolation> errors = ex.getParameterValidationResults().stream()
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(final HandlerMethodValidationException ex,
+                                                                             final HttpHeaders headers,
+                                                                             final HttpStatusCode status,
+                                                                             final WebRequest request) {
+        final List<FieldViolation> errors = ex.getParameterValidationResults().stream()
                 .flatMap(GlobalExceptionHandler::violations)
                 .sorted(Comparator.comparing(FieldViolation::field))
                 .toList();
@@ -116,7 +117,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * method at once, and errors in a {@code @Valid} body arrive here as {@link ParameterErrors}: report them by
      * field path, exactly as body validation does.
      */
-    private static java.util.stream.Stream<FieldViolation> violations(ParameterValidationResult result) {
+    private static java.util.stream.Stream<FieldViolation> violations(final ParameterValidationResult result) {
         if (result instanceof ParameterErrors bodyErrors) {
             return bodyErrors.getAllErrors().stream().map(error ->
                     error instanceof org.springframework.validation.FieldError fieldError
@@ -129,10 +130,10 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     /** A required header that is absent is a validation error on that header, like any other field. */
     @Override
-    protected ResponseEntity<Object> handleServletRequestBindingException(ServletRequestBindingException ex,
-                                                                          HttpHeaders headers,
-                                                                          HttpStatusCode status,
-                                                                          WebRequest request) {
+    protected ResponseEntity<Object> handleServletRequestBindingException(final ServletRequestBindingException ex,
+                                                                          final HttpHeaders headers,
+                                                                          final HttpStatusCode status,
+                                                                          final WebRequest request) {
         if (ex instanceof MissingRequestHeaderException missing) {
             return ResponseEntity.badRequest().body(validationFailed(
                     List.of(new FieldViolation(missing.getHeaderName(), null, "is required"))).getBody());
@@ -141,7 +142,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /** The name the client used: the header or query parameter name, not the Java parameter name. */
-    private static String requestName(MethodParameter parameter) {
+    private static String requestName(final MethodParameter parameter) {
         final RequestHeader header = parameter.getParameterAnnotation(RequestHeader.class);
         if (header != null && !header.name().isEmpty()) {
             return header.name();
@@ -154,32 +155,34 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
-    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
-                                                                  HttpHeaders headers, HttpStatusCode status,
-                                                                  WebRequest request) {
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(final HttpMessageNotReadableException ex,
+                                                                  final HttpHeaders headers,
+                                                                  final HttpStatusCode status,
+                                                                  final WebRequest request) {
         return ResponseEntity.badRequest().body(Problems.of(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
                 "Malformed request", "The request body is not valid JSON or contains unknown or mistyped fields."));
     }
 
     /** Framework exceptions (405, 415, missing header, ...) keep their status but get our problem shape. */
     @Override
-    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
-                                                             HttpStatusCode statusCode, WebRequest request) {
+    protected ResponseEntity<Object> handleExceptionInternal(final Exception ex, final Object body,
+                                                             final HttpHeaders headers, final HttpStatusCode statusCode,
+                                                             final WebRequest request) {
         if (body instanceof ProblemDetail problem && problem.getProperties() != null
                 && problem.getProperties().containsKey("code")) {
             return super.handleExceptionInternal(ex, body, headers, statusCode, request);
         }
-        String detail = ex instanceof ErrorResponse errorResponse && errorResponse.getBody().getDetail() != null
+        final String detail = ex instanceof ErrorResponse errorResponse && errorResponse.getBody().getDetail() != null
                 ? errorResponse.getBody().getDetail()
                 : "The request could not be processed.";
-        HttpStatus status = HttpStatus.resolve(statusCode.value());
-        String code = status == null ? "REQUEST_ERROR" : status.name();
-        String title = status == null ? "Request error" : status.getReasonPhrase();
+        final HttpStatus status = HttpStatus.resolve(statusCode.value());
+        final String code = status == null ? "REQUEST_ERROR" : status.name();
+        final String title = status == null ? "Request error" : status.getReasonPhrase();
         return super.handleExceptionInternal(ex, Problems.of(statusCode, code, title, detail), headers,
                 statusCode, request);
     }
 
-    private static ResponseEntity<ProblemDetail> validationFailed(List<FieldViolation> errors) {
+    private static ResponseEntity<ProblemDetail> validationFailed(final List<FieldViolation> errors) {
         return ResponseEntity.badRequest().body(Problems.of(HttpStatus.BAD_REQUEST, "VALIDATION_FAILED",
                 "Request validation failed", errors.size() + " field(s) are invalid", errors));
     }

@@ -23,7 +23,7 @@ public class FulfilmentOrderController {
 
     private final FulfilmentOrderService service;
 
-    FulfilmentOrderController(FulfilmentOrderService service) {
+    FulfilmentOrderController(final FulfilmentOrderService service) {
         this.service = service;
     }
 
@@ -31,20 +31,20 @@ public class FulfilmentOrderController {
             + "Idempotency-Key and body return the original with 200.")
     @PostMapping
     ResponseEntity<FulfilmentOrderResponse> submit(
-            @RequestHeader(IdempotencyKey.HEADER) @IdempotencyKey String idempotencyKey,
-            @Valid @RequestBody FulfilmentOrderRequest request) {
-        SubmissionResult result = service.submit(idempotencyKey, request);
+            @RequestHeader(IdempotencyKey.HEADER) @IdempotencyKey final String idempotencyKey,
+            @Valid @RequestBody final FulfilmentOrderRequest request) {
+        final SubmissionResult result = service.submit(idempotencyKey, request);
         if (result.replayed()) {
             return ResponseEntity.ok(result.response());
         }
-        var location = ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{reference}")
+        final var location = ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{reference}")
                 .buildAndExpand(result.response().fulfilmentReference()).toUri();
         return ResponseEntity.created(location).body(result.response());
     }
 
     @Operation(summary = "Read a fulfilment order; the ID number is masked")
     @GetMapping("/{fulfilmentReference}")
-    FulfilmentOrderView find(@PathVariable String fulfilmentReference) {
+    FulfilmentOrderView find(@PathVariable final String fulfilmentReference) {
         return service.find(fulfilmentReference);
     }
 }

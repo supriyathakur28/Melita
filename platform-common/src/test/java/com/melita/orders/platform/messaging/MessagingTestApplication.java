@@ -36,7 +36,7 @@ class MessagingTestApplication {
 
     @Bean
     Declarables relayTestQueue() {
-        var queue = QueueBuilder.durable(RELAY_QUEUE).build();
+        final var queue = QueueBuilder.durable(RELAY_QUEUE).build();
         return new Declarables(Queues.eventsExchange(), queue,
                 BindingBuilder.bind(queue).to(Queues.eventsExchange()).with("order.#"));
     }
@@ -55,7 +55,7 @@ class MessagingTestApplication {
         final List<String> deadLettered = new CopyOnWriteArrayList<>();
 
         @Override
-        public void onDeadLetter(Message message, Throwable cause) {
+        public void onDeadLetter(final Message message, final Throwable cause) {
             deadLettered.add(new String(message.getBody(), StandardCharsets.UTF_8));
         }
     }
@@ -67,10 +67,10 @@ class MessagingTestApplication {
         final List<String> succeeded = new CopyOnWriteArrayList<>();
 
         @RabbitListener(queues = LISTENER_QUEUE)
-        void onMessage(Message message) {
-            String body = new String(message.getBody(), StandardCharsets.UTF_8);
-            int attempt = invocations.computeIfAbsent(body, b -> new AtomicInteger()).incrementAndGet();
-            String requestId = MDC.get("requestId");
+        void onMessage(final Message message) {
+            final String body = new String(message.getBody(), StandardCharsets.UTF_8);
+            final int attempt = invocations.computeIfAbsent(body, b -> new AtomicInteger()).incrementAndGet();
+            final String requestId = MDC.get("requestId");
             if (requestId != null) {
                 correlationSeen.put(body, requestId);
             }

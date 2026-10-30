@@ -16,13 +16,13 @@ public class ProblemAccessDeniedHandler implements AccessDeniedHandler {
     private final BearerTokenAccessDeniedHandler bearer = new BearerTokenAccessDeniedHandler();
     private final JsonMapper jsonMapper;
 
-    public ProblemAccessDeniedHandler(JsonMapper jsonMapper) {
+    public ProblemAccessDeniedHandler(final JsonMapper jsonMapper) {
         this.jsonMapper = jsonMapper;
     }
 
     @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response,
-                       AccessDeniedException accessDeniedException) throws IOException {
+    public void handle(final HttpServletRequest request, final HttpServletResponse response,
+                       final AccessDeniedException accessDeniedException) throws IOException {
         bearer.handle(request, response, accessDeniedException);
         ProblemResponses.write(response, jsonMapper, SecurityProblems.forbidden());
     }

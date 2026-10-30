@@ -18,13 +18,13 @@ class ApplicationConfig {
     }
 
     @Bean
-    RequestHasher requestHasher(JsonMapper jsonMapper) {
+    RequestHasher requestHasher(final JsonMapper jsonMapper) {
         return new RequestHasher(jsonMapper);
     }
 
     /** This service's own key: it never shares encryption keys with other services. */
     @Bean
-    PiiCipher piiCipher(@Value("${pii.encryption-key}") String key) {
+    PiiCipher piiCipher(@Value("${pii.encryption-key}") final String key) {
         return new PiiCipher(key);
     }
 }

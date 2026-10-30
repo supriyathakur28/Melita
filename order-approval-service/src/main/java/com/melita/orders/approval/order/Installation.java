@@ -22,7 +22,7 @@ public record Installation(
         Address address) {
 
     /** The preferred date is today or already past, so Fulfilment must agree a new date with the customer. */
-    public boolean isExpiredOn(LocalDate today) {
+    public boolean isExpiredOn(final LocalDate today) {
         return !preferredDate.isAfter(today);
     }
 }

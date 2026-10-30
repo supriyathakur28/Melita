@@ -16,7 +16,7 @@ class CatalogueWithoutRedisIT extends IntakeIntegrationTest {
 
     @Test
     void catalogueIsServedFromTheDatabaseWhenRedisIsDown() {
-        Catalogue catalogue = catalogueService.current();
+        final Catalogue catalogue = catalogueService.current();
 
         assertThat(catalogue.findPackage("MOBILE_POSTPAID")).isPresent();
     }

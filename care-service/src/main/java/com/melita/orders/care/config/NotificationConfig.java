@@ -33,7 +33,7 @@ class NotificationConfig {
 
     /** No API: only health and info are reachable. */
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    SecurityFilterChain securityFilterChain(final HttpSecurity http) {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth

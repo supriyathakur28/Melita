@@ -24,16 +24,16 @@ class EmailComposerTest {
     private final EmailComposer composer = new EmailComposer(engine(), jsonMapper);
 
     private static SpringTemplateEngine engine() {
-        var resolver = new ClassLoaderTemplateResolver();
+        final var resolver = new ClassLoaderTemplateResolver();
         resolver.setPrefix("templates/");
         resolver.setSuffix(".html");
-        var engine = new SpringTemplateEngine();
+        final var engine = new SpringTemplateEngine();
         engine.setTemplateResolver(resolver);
         return engine;
     }
 
     static OrderAccepted order() {
-        var address = new OrderAccepted.Address("12, Triq il-Kbira", null, "Mosta", "MST 1234");
+        final var address = new OrderAccepted.Address("12, Triq il-Kbira", null, "Mosta", "MST 1234");
         return new OrderAccepted(UUID.randomUUID(), "erp-partner", "ERP-42",
                 new OrderAccepted.Customer("Maria", "Borg", LocalDate.of(1990, 4, 12), "maria.borg@example.com",
                         "+35679123456", new OrderAccepted.IdentityDocument("ID_CARD", "123456M"), address),
@@ -43,9 +43,10 @@ class EmailComposerTest {
 
     @Test
     void newOrderEmailShowsTheOrderWithTheIdNumberMasked() {
-        var event = EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req", Instant.now(), order());
+        final var event = EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req", Instant.now(), order());
 
-        Email email = composer.compose(OrderEvents.ORDER_ACCEPTED, jsonMapper.writeValueAsBytes(event)).orElseThrow();
+        final Email email =
+                composer.compose(OrderEvents.ORDER_ACCEPTED, jsonMapper.writeValueAsBytes(event)).orElseThrow();
 
         assertThat(email.subject()).isEqualTo("New order ERP-42");
         assertThat(email.template()).isEqualTo("order-accepted");

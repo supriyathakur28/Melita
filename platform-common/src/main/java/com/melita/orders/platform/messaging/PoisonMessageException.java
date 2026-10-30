@@ -6,11 +6,11 @@ package com.melita.orders.platform.messaging;
  */
 public class PoisonMessageException extends RuntimeException {
 
-    public PoisonMessageException(String message, Throwable cause) {
+    public PoisonMessageException(final String message, final Throwable cause) {
         super(message, cause);
     }
 
-    public PoisonMessageException(String message) {
+    public PoisonMessageException(final String message) {
         super(message);
     }
 }

@@ -34,7 +34,8 @@ public class FulfilmentOrderItem {
     protected FulfilmentOrderItem() {
     }
 
-    FulfilmentOrderItem(FulfilmentOrder order, String productCode, String packageCode, String packageName) {
+    FulfilmentOrderItem(final FulfilmentOrder order, final String productCode, final String packageCode,
+                        final String packageName) {
         this.order = order;
         this.productCode = productCode;
         this.packageCode = packageCode;

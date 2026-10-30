@@ -33,7 +33,7 @@ class ApplicationConfig {
     }
 
     @Bean
-    RequestHasher requestHasher(JsonMapper jsonMapper) {
+    RequestHasher requestHasher(final JsonMapper jsonMapper) {
         return new RequestHasher(jsonMapper);
     }
 
@@ -44,7 +44,7 @@ class ApplicationConfig {
     }
 
     @Bean
-    Gauge outboxPendingGauge(MeterRegistry registry, OutboxRelay relay) {
+    Gauge outboxPendingGauge(final MeterRegistry registry, final OutboxRelay relay) {
         return Gauge.builder("outbox.pending", relay, OutboxRelay::pendingCount)
                 .description("Events written to the outbox but not yet confirmed by the broker")
                 .register(registry);

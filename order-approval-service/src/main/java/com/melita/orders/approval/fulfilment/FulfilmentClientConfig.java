@@ -25,28 +25,28 @@ class FulfilmentClientConfig {
 
     /** Client credentials outside any HTTP request (the submitter is a scheduled job). Tokens are cached. */
     @Bean
-    OAuth2AuthorizedClientManager authorizedClientManager(ClientRegistrationRepository registrations,
-                                                          OAuth2AuthorizedClientService clients) {
-        var manager = new AuthorizedClientServiceOAuth2AuthorizedClientManager(registrations, clients);
+    OAuth2AuthorizedClientManager authorizedClientManager(final ClientRegistrationRepository registrations,
+                                                          final OAuth2AuthorizedClientService clients) {
+        final var manager = new AuthorizedClientServiceOAuth2AuthorizedClientManager(registrations, clients);
         manager.setAuthorizedClientProvider(OAuth2AuthorizedClientProviderBuilder.builder().clientCredentials().build());
         return manager;
     }
 
     @Bean
-    RestClient fulfilmentRestClient(RestClient.Builder builder, FulfilmentProperties properties,
-                                    OAuth2AuthorizedClientManager authorizedClientManager) {
-        var requestFactory = new JdkClientHttpRequestFactory(
+    RestClient fulfilmentRestClient(final RestClient.Builder builder, final FulfilmentProperties properties,
+                                    final OAuth2AuthorizedClientManager authorizedClientManager) {
+        final var requestFactory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(properties.connectTimeout()).build());
         requestFactory.setReadTimeout(properties.readTimeout());
 
-        var oauth2 = new OAuth2ClientHttpRequestInterceptor(authorizedClientManager);
+        final var oauth2 = new OAuth2ClientHttpRequestInterceptor(authorizedClientManager);
         oauth2.setClientRegistrationIdResolver(request -> REGISTRATION_ID);
 
         return builder.baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
                 .requestInterceptor(oauth2)
                 .requestInterceptor((request, body, execution) -> {
-                    String requestId = org.slf4j.MDC.get("requestId");
+                    final String requestId = org.slf4j.MDC.get("requestId");
                     if (requestId != null) {
                         request.getHeaders().set("X-Request-Id", requestId);
                     }
@@ -57,8 +57,8 @@ class FulfilmentClientConfig {
 
     /** Opens after half of the last 10 calls failed temporarily; 4xx answers are not counted as failures. */
     @Bean
-    CircuitBreaker fulfilmentCircuitBreaker(FulfilmentProperties properties) {
-        CircuitBreaker breaker = CircuitBreaker.of("fulfilment", CircuitBreakerConfig.custom()
+    CircuitBreaker fulfilmentCircuitBreaker(final FulfilmentProperties properties) {
+        final CircuitBreaker breaker = CircuitBreaker.of("fulfilment", CircuitBreakerConfig.custom()
                 .slidingWindowSize(10)
                 .minimumNumberOfCalls(5)
                 .failureRateThreshold(50)
