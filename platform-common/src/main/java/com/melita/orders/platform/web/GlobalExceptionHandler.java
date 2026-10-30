@@ -14,10 +14,17 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.ErrorResponse;
+import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.ServletRequestBindingException;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
@@ -98,10 +105,52 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                                                                              HttpStatusCode status,
                                                                              WebRequest request) {
         List<FieldViolation> errors = ex.getParameterValidationResults().stream()
-                .flatMap(result -> result.getResolvableErrors().stream().map(error -> new FieldViolation(
-                        result.getMethodParameter().getParameterName(), null, error.getDefaultMessage())))
+                .flatMap(GlobalExceptionHandler::violations)
+                .sorted(Comparator.comparing(FieldViolation::field))
                 .toList();
         return ResponseEntity.badRequest().body(validationFailed(errors).getBody());
+    }
+
+    /**
+     * When a controller method has a constraint on a plain parameter (e.g. a header), Spring validates the whole
+     * method at once, and errors in a {@code @Valid} body arrive here as {@link ParameterErrors}: report them by
+     * field path, exactly as body validation does.
+     */
+    private static java.util.stream.Stream<FieldViolation> violations(ParameterValidationResult result) {
+        if (result instanceof ParameterErrors bodyErrors) {
+            return bodyErrors.getAllErrors().stream().map(error ->
+                    error instanceof org.springframework.validation.FieldError fieldError
+                            ? new FieldViolation(fieldError.getField(), fieldError.getCode(), fieldError.getDefaultMessage())
+                            : new FieldViolation(error.getObjectName(), error.getCode(), error.getDefaultMessage()));
+        }
+        return result.getResolvableErrors().stream()
+                .map(error -> new FieldViolation(requestName(result.getMethodParameter()), null, error.getDefaultMessage()));
+    }
+
+    /** A required header that is absent is a validation error on that header, like any other field. */
+    @Override
+    protected ResponseEntity<Object> handleServletRequestBindingException(ServletRequestBindingException ex,
+                                                                          HttpHeaders headers,
+                                                                          HttpStatusCode status,
+                                                                          WebRequest request) {
+        if (ex instanceof MissingRequestHeaderException missing) {
+            return ResponseEntity.badRequest().body(validationFailed(
+                    List.of(new FieldViolation(missing.getHeaderName(), null, "is required"))).getBody());
+        }
+        return super.handleServletRequestBindingException(ex, headers, status, request);
+    }
+
+    /** The name the client used: the header or query parameter name, not the Java parameter name. */
+    private static String requestName(MethodParameter parameter) {
+        final RequestHeader header = parameter.getParameterAnnotation(RequestHeader.class);
+        if (header != null && !header.name().isEmpty()) {
+            return header.name();
+        }
+        final RequestParam param = parameter.getParameterAnnotation(RequestParam.class);
+        if (param != null && !param.name().isEmpty()) {
+            return param.name();
+        }
+        return parameter.getParameterName();
     }
 
     @Override

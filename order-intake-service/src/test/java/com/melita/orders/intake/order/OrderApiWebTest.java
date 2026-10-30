@@ -89,7 +89,20 @@ class OrderApiWebTest {
         mvc.perform(post("/api/v1/orders").with(partner("orders:write"))
                         .contentType(MediaType.APPLICATION_JSON).content(validBody()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_INVALID"));
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("Idempotency-Key"))
+                .andExpect(jsonPath("$.errors[0].message").value("is required"));
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void malformedIdempotencyKeyIs400() throws Exception {
+        mvc.perform(post("/api/v1/orders").with(partner("orders:write")).header("Idempotency-Key", "short")
+                        .contentType(MediaType.APPLICATION_JSON).content(validBody()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("Idempotency-Key"));
+        verifyNoInteractions(service);
     }
 
     @Test

@@ -108,6 +108,24 @@ class ErrorHandlingWebTest {
     }
 
     @Test
+    void missingRequiredHeaderIsAFieldErrorOnTheHeader() throws Exception {
+        mvc.perform(post("/test/validate-with-header").with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"a\",\"email\":\"a@b.mt\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("Idempotency-Key"))
+                .andExpect(jsonPath("$.errors[0].message").value("is required"));
+    }
+
+    @Test
+    void headerConstraintAndBodyErrorsAreReportedByTheirClientNames() throws Exception {
+        mvc.perform(post("/test/validate-with-header").with(jwt()).header("Idempotency-Key", "short")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"\",\"email\":\"nope\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[*].field", org.hamcrest.Matchers.contains("Idempotency-Key", "email", "name")));
+    }
+
+    @Test
     void malformedJsonIs400() throws Exception {
         mvc.perform(post("/test/validate").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)

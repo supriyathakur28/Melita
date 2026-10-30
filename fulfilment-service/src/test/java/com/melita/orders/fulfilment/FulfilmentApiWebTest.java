@@ -87,7 +87,9 @@ class FulfilmentApiWebTest {
         mvc.perform(post("/api/v1/fulfilment-orders").with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_fulfilment:submit")))
                         .contentType(MediaType.APPLICATION_JSON).content(body()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_INVALID"));
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors[0].field").value("Idempotency-Key"));
+        verifyNoInteractions(service);
     }
 
     @Test

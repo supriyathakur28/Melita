@@ -665,7 +665,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('400', () => pm.response.to.have.status(400));",
-                  "pm.test('code', () => pm.expect(pm.response.json().code).to.eql('IDEMPOTENCY_KEY_INVALID'));"
+                  "pm.test('validation error on the header', () => { pm.expect(pm.response.json().code).to.eql('VALIDATION_FAILED'); pm.expect(pm.response.json().errors[0].field).to.eql('Idempotency-Key'); });"
                 ]
               }
             }

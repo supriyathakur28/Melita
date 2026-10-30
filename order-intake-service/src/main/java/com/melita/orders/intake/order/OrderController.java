@@ -2,11 +2,10 @@ package com.melita.orders.intake.order;
 
 import com.melita.orders.intake.order.api.OrderReceipt;
 import com.melita.orders.intake.order.api.PlaceOrderRequest;
-import com.melita.orders.platform.web.ApiException;
+import com.melita.orders.platform.idempotency.IdempotencyKey;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -20,15 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/v1/orders")
 class OrderController {
 
-    static final String IDEMPOTENCY_KEY = "Idempotency-Key";
     static final String REPLAYED = "Idempotent-Replayed";
-    private static final Pattern KEY_FORMAT = Pattern.compile("[A-Za-z0-9_-]{8,64}");
 
     private final OrderIntakeService service;
 
@@ -41,13 +37,9 @@ class OrderController {
     @PostMapping
     ResponseEntity<OrderReceipt> place(
             @Parameter(description = "8-64 characters, letters, digits, '-' or '_'; unique per order attempt")
-            @RequestHeader(name = IDEMPOTENCY_KEY, required = false) String idempotencyKey,
+            @RequestHeader(IdempotencyKey.HEADER) @IdempotencyKey String idempotencyKey,
             @Valid @RequestBody PlaceOrderRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        if (idempotencyKey == null || !KEY_FORMAT.matcher(idempotencyKey).matches()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "IDEMPOTENCY_KEY_INVALID",
-                    "The Idempotency-Key header is required: 8-64 characters, letters, digits, '-' or '_'");
-        }
         PlacementResult result = service.place(PartnerIds.from(jwt), idempotencyKey, request);
         var location = ServletUriComponentsBuilder.fromCurrentRequestUri().path("/{id}")
                 .buildAndExpand(result.receipt().orderId()).toUri();

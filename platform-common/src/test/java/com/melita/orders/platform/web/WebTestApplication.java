@@ -116,6 +116,13 @@ class WebTestApplication {
             throw new org.springframework.dao.CannotAcquireLockException("Deadlock found when trying to get lock");
         }
 
+        @PostMapping("/test/validate-with-header")
+        Payload validateWithHeader(@org.springframework.web.bind.annotation.RequestHeader("Idempotency-Key")
+                                   @com.melita.orders.platform.idempotency.IdempotencyKey String key,
+                                   @Valid @RequestBody Payload payload) {
+            return payload;
+        }
+
         @GetMapping("/test/teapot")
         void teapot() {
             throw new ApiException(HttpStatus.I_AM_A_TEAPOT, "TEAPOT", "short and stout");
