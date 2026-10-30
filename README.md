@@ -3,9 +3,11 @@
 An authenticated **Order Taking API** for third parties (for example an ERP selling Melita products), and an
 **Order Approval** workflow behind it:
 
-- orders are validated, accepted and published as events to RabbitMQ for Fulfilment and Care;
-- the consumers persist each order, email the agents, hold orders whose products need approval until an
-  agent approves them through a private API, and submit them to the Order Fulfilment system over REST.
+- orders are validated, accepted and published as an event to RabbitMQ;
+- on the **Ordering Fulfilment** side, order-approval persists each order, holds it if its products need
+  approval until an agent approves it through a private API, and submits it over REST to the
+  **fulfilment-service**, which creates the final fulfilment order;
+- on the **Care** side, care-service emails the order to an agent.
 
 Spring Boot 4 · Java 21 · Spring Cloud Config · Spring Security (OAuth2 / Keycloak) · Spring Data JPA ·
 MySQL · RabbitMQ · Redis · SMTP · Testcontainers · Postman/Newman · Docker Compose · GitHub Actions.
@@ -19,24 +21,24 @@ event contract for downstream teams is in [docs/events.md](docs/events.md).
 flowchart LR
     ERP["ERP / partner"] -- "POST /api/v1/orders<br/>OAuth2 client credentials" --> OI["order-intake-service<br/><b>public API</b> :8081"]
     OI -- "order.accepted<br/>(transactional outbox)" --> EX{{"RabbitMQ<br/>orders.events"}}
-    EX --> OM["order-management-service<br/><b>private Approval API</b> :8082"]
-    EX --> NS["notification-service"]
-    EX -.-> DQ["Fulfilment / Care queues"]
+    EX --> OM["order-approval-service<br/><b>private Approval API</b> :8082"]
+    EX --> NS["care-service"]
     OM -- "approval-requested, approved, rejected,<br/>submitted, fulfilment-failed" --> EX
     AG["Agent"] -- "approve / reject<br/>role AGENT" --> OM
-    OM -- "POST /fulfilment-orders<br/>Idempotency-Key" --> FUL["Order Fulfilment<br/>(stub)"]
+    OM -- "POST /fulfilment-orders<br/>Idempotency-Key" --> FUL["fulfilment-service<br/><b>Fulfilment API</b> :8084"]
     NS -- SMTP --> MB["Agents' mailbox"]
-    CFG["Config Server<br/>(git)"] -.-> OI & OM & NS
+    CFG["Config Server<br/>(git)"] -.-> OI & OM & FUL & NS
 ```
 
 | Brief deliverable | Where |
 |---|---|
 | Authenticated public REST Order Taking API | `order-intake-service`: OAuth2 JWT, scopes, partner isolation |
-| Authenticated private REST Order Approval API | `order-management-service`: Keycloak roles `AGENT` / `SUPERVISOR` |
-| Microservices with Spring Boot | Config Server, order-intake, order-management, notification (+ Fulfilment stub) |
+| Authenticated private REST Order Approval API | `order-approval-service`: Keycloak roles `AGENT` / `SUPERVISOR` |
+| Microservices with Spring Boot | Config Server, order-intake, order-approval, fulfilment, care |
 | Publish / consume with RabbitMQ | Topic exchange `orders.events`, transactional outbox, idempotent consumers, DLQs |
-| Emails via SMTP | `notification-service` (Mailpit locally) |
-| Orders saved with Spring Data JPA | `order-management-service` (MySQL, Flyway) |
+| Emails via SMTP | `care-service` (Mailpit locally) |
+| Submit the order restfully to the Ordering Fulfilment system | `order-approval-service` → `fulfilment-service` (OAuth2 client credentials, Idempotency-Key, retries, circuit breaker) |
+| Orders saved with Spring Data JPA | `order-approval-service` and `fulfilment-service` (MySQL, Flyway) |
 | Approval of configurable products | Approval policy in Spring Cloud Config; whole-order approval |
 | Configuration in Spring Cloud Config | `config-server` serving `config-repo/` from git |
 | JUnit tests and Postman collections | Unit, web-slice and Testcontainers integration tests; `postman/` run by Newman in CI |
@@ -63,6 +65,7 @@ The first start pulls the images and takes a few minutes. When the command retur
 |---|---|---|
 | Order Taking API | http://localhost:8081/swagger-ui.html | public API (partners) |
 | Order Approval API | http://localhost:8082/swagger-ui.html | private API (agents) |
+| Ordering Fulfilment API | http://localhost:8084/swagger-ui.html | service API (order-approval) |
 | Keycloak | http://localhost:8180 | realm `melita`; admin console user `admin`, password from `.env` |
 | RabbitMQ | http://localhost:15672 | user `admin`, password from `.env` |
 | Mailpit (agents' mailbox) | http://localhost:8025 | every email the platform sends |
@@ -79,6 +82,7 @@ These exist only in the development realm (`infra/keycloak/melita-realm.json`); 
 | Partner `other-partner` | client credentials | client secret `other-partner-local-secret` |
 | Agent | password grant, client `agent-console` | `agent1` / `agent1-password` |
 | Supervisor | password grant, client `agent-console` | `supervisor1` / `supervisor1-password` |
+| Service client `order-approval` (calls Fulfilment) | client credentials | client secret `order-approval-local-secret` |
 
 The password grant exists only so Postman and CI can obtain agent tokens. In production, agents sign in
 through a UI with authorisation code + PKCE.
@@ -146,7 +150,7 @@ Docker must be running: the integration tests start MySQL, RabbitMQ, Redis and M
 |---|---|
 | Unit | Validation rules (dates computed in Malta time from a fixed clock, working days, holidays), every state-machine transition, approval policy, request hashing, AES-GCM encryption, email composition |
 | Web slice (`@WebMvcTest`) | Error responses and the security matrix: 401/403 per endpoint, scope and role, 404 for another partner's order |
-| Integration (Testcontainers) | Order → outbox → RabbitMQ; **parallel requests with one Idempotency-Key create one order**; replay/422/409; **duplicate delivery**; **two agents deciding at once (one 200, one 409)**; poison messages → DLQ; Fulfilment retry with the same key, permanent failure, retry exhaustion; encryption at rest; policy refresh; Redis down → catalogue from MySQL; SMTP down → retried, dead-lettered, marked FAILED |
+| Integration (Testcontainers) | Order → outbox → RabbitMQ; **parallel requests with one Idempotency-Key create one order**; replay/422/409; **duplicate delivery**; **two agents deciding at once (one 200, one 409)**; poison messages → DLQ; Fulfilment retry with the same key, permanent failure, retry exhaustion (against a scripted test fake); fulfilment-service durable idempotency and both 409 cases; encryption at rest; policy refresh; Redis down → catalogue from MySQL; SMTP down → retried, dead-lettered, marked FAILED |
 | Postman + Newman | The running stack end to end with real Keycloak tokens |
 
 CI (`.github/workflows/ci.yml`) runs `./mvnw verify`. A second job then brings up the full stack and runs
@@ -168,7 +172,7 @@ the Postman collection.
 - **Transactional outbox.** The order and its event commit together. A relay publishes the event with
   publisher confirms and clears personal data from the outbox once it is published. Consumers are
   idempotent (inbox table / unique keys), so at-least-once delivery is safe.
-- **Approval.** Which products or packages need approval is configured in `config-repo/order-management-service.yml`.
+- **Approval.** Which products or packages need approval is configured in `config-repo/order-approval-service.yml`.
   - It is evaluated once, when the order arrives.
   - Agents approve or reject; the agent is always taken from the token.
   - The `OrderStatus` state machine and `@Version` make a second or concurrent decision a 409.
@@ -212,7 +216,7 @@ All service configuration lives in `config-repo/` and is served by the Config Se
 - `CONFIG_GIT_LABEL` (default `main`) selects the branch, tag or commit.
 
 To change the approval policy at runtime:
-1. Edit `approval.required-packages` in `config-repo/order-management-service.yml`.
+1. Edit `approval.required-packages` in `config-repo/order-approval-service.yml`.
 2. Commit the change.
 3. Call refresh as a supervisor:
 
@@ -238,7 +242,7 @@ To run a service from the IDE:
 ## Operations notes
 
 - **Dead-letter queues.**
-  - `order-management.order-accepted.dlq` and `notification.order-events.dlq` hold messages that could not
+  - `order-approval.order-accepted.dlq` and `care.order-events.dlq` hold messages that could not
     be processed. The reason is in the service log, searchable by `messageId`.
   - After fixing the cause, move the messages back with the RabbitMQ UI (Queues → the DLQ → *Move
     messages*) or a shovel.
@@ -275,9 +279,9 @@ order-events-contract/     event envelope and payload records shared by producer
 platform-common/           error model, request ID, security handlers, outbox/inbox, listener support
 config-server/             Spring Cloud Config Server (git backend)
 order-intake-service/      public Order Taking API
-order-management-service/  approval workflow, private Approval API, Fulfilment submitter
-notification-service/      agent emails over SMTP
-fulfilment-stub/           stand-in for the Order Fulfilment system
+order-approval-service/    approval workflow, private Approval API, Fulfilment submitter
+fulfilment-service/        Ordering Fulfilment API: creates the final fulfilment order
+care-service/              agent emails over SMTP
 config-repo/               configuration served by the Config Server
 infra/                     Keycloak realm, MySQL init, RabbitMQ setup
 postman/                   Postman collection and environment
@@ -291,14 +295,18 @@ I work day to day.
 
 - **Design first.**
   - I worked through the brief and the architecture with the assistant one question at a time. The
-    choices were mine: RabbitMQ, Keycloak, three services, whole-order approval, the git-backed Config
+    choices were mine: RabbitMQ, Keycloak, the service split, whole-order approval, the git-backed Config
     Server, single-instance scheduled jobs via a MySQL named lock, idempotency in MySQL rather than Redis,
     and encrypting the ID number.
   - The design document was reviewed section by section, and several parts were changed or removed in
     that review.
 - **Independent review.** Before coding, I had a separate AI review look for over-engineering. I accepted
-  most of its simplifications and rejected some (for example, I kept the separate notification service and
-  its notification log).
+  most of its simplifications and rejected some (for example, I kept a separate email service and its
+  notification log).
+- **My corrections during code review.** I rejected a Fulfilment stub that had a failure-injection header
+  in its API and kept idempotency in memory: test hooks belong in test fakes, not in a service's API, and
+  idempotency must survive a restart. Following the brief's wording, I restructured the services into
+  intake, order-approval, fulfilment and care, with Fulfilment as a real service with its own database.
 - **Implementation.** The assistant wrote most of the code, tests and documentation from the agreed
   design, in small commits, each with its tests. Several defects were caught by those tests before they
   were committed, for example:

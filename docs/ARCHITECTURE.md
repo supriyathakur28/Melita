@@ -1,6 +1,6 @@
 # Melita Order Taking & Approval Platform — Architecture and System Design
 
-Status: **v1.2, matches the implementation** · Author: Supriya Thakur · Date: 2026-10-29
+Status: **v1.3, matches the implementation** · Author: Supriya Thakur · Date: 2026-10-29
 
 ---
 
@@ -14,16 +14,12 @@ Third parties (for example an ERP system) sell Melita products on Melita's behal
 - one or more products (Internet, TV, Telephony, Mobile), each with exactly one package
   (Internet 250Mbps / 1Gbps, TV 90 / 140 channels, Telephony Free On-net / Unlimited, Mobile Prepaid / Post-paid).
 
-The API validates and accepts the order, then publishes an event so that Melita's **Order Fulfilment** and
-**Care** systems can pick it up.
+The API validates and accepts the order, then publishes an event that two consumers pick up:
 
-Consumers of that event:
-
-1. email the order information to an agent (SMTP),
-2. persist the order in a database (Spring Data JPA),
-3. submit the order RESTfully to the Order Fulfilment system,
-4. hold orders containing **products that need approval** until an agent approves them through an
-   **authenticated private Order Approval API**.
+- **Ordering Fulfilment** side: the order is persisted (Spring Data JPA), held if it contains **products that
+  need approval** until an agent approves it through an **authenticated private Order Approval API**, then
+  submitted RESTfully to the **Ordering Fulfilment** service, which creates the final fulfilment order;
+- **Care** side: an email with the order information is sent to an agent (SMTP).
 
 ## 2. Assumptions
 
@@ -33,7 +29,7 @@ Consumers of that event:
 |---|---|---|
 | Volume | ~5,000 orders/day, peaks of ~20 requests/s | One MySQL server and single-node RabbitMQ/Redis are enough |
 | Latency | `POST /orders` p95 < 500 ms | Intake validates and runs one local transaction; no synchronous downstream calls |
-| Availability | Intake keeps accepting orders while order-management, Fulfilment or SMTP are down | Asynchronous hand-off through the outbox and broker |
+| Availability | Intake keeps accepting orders while order-approval, Fulfilment, Care or SMTP are down | Asynchronous hand-off through the outbox and broker |
 | Durability | An order answered with `201` is never lost | `201` only after the order and its event commit in one transaction |
 | Scalability | Every service can run ≥ 2 instances | Stateless services; scheduled jobs run on one instance at a time (§10.3) |
 
@@ -49,8 +45,8 @@ Consumers of that event:
 | A6 | Customers are Maltese residents: Maltese postcode, E.164 phone, minimum age 18, and a mandatory identity document (ID card or passport), needed for telecoms KYC. |
 | A7 | "Configurable products need approval" is read as: **which products/packages need approval is configurable**. The list lives in Spring Cloud Config. An admin API to manage the list is the alternative reading, listed in §16. |
 | A8 | Approval is for the **whole order**. A rejection needs a reason and is final. |
-| A9 | The Fulfilment REST contract is not given, so we define one (§8.3) and provide a stub. |
-| A10 | The order email goes to a configurable shared agents' mailbox. |
+| A9 | The Ordering Fulfilment REST contract is not given, so we define it (§8.3) and implement Fulfilment as a service of this platform. In a real Melita landscape it could be an existing system; only its URL would change. |
+| A10 | The Care service emails a configurable shared agents' mailbox (in practice, the Customer Care team's). |
 
 ## 3. Technology choices
 
@@ -66,7 +62,7 @@ Consumers of that event:
 | Email | Spring Mail + Thymeleaf; Mailpit as the local SMTP server |
 | Resilience | Resilience4j circuit breaker |
 | API docs | springdoc-openapi + Swagger UI |
-| Tests | JUnit 5, AssertJ, Mockito, Spring Boot test slices, spring-security-test, Testcontainers, WireMock; Postman + Newman |
+| Tests | JUnit 5, AssertJ, Mockito, Spring Boot test slices, spring-security-test, Testcontainers; Postman + Newman |
 
 ## 4. Architecture overview
 
@@ -84,18 +80,21 @@ flowchart LR
             OI["<b>public API</b>"]
             DB1[("order_intake DB")]
         end
-        subgraph S2["order-management-service"]
+        subgraph S2["order-approval-service"]
             OM["<b>private Approval API</b>"]
-            DB2[("order_management DB")]
+            DB2[("order_approval DB")]
         end
-        subgraph S3["notification-service"]
-            NS["email sender"]
-            DB3[("notification DB")]
+        subgraph S4["fulfilment-service"]
+            FUL["<b>Fulfilment API</b>"]
+            DB4[("fulfilment DB")]
+        end
+        subgraph S3["care-service"]
+            NS["email to agents"]
+            DB3[("care DB")]
         end
         R[("Redis<br/>catalogue cache")]
     end
 
-    FUL["Order Fulfilment<br/><i>stub</i>"]
     SMTP["SMTP server<br/><i>Mailpit locally</i>"]
 
     ERP -- "POST /api/v1/orders · JWT" --> OI
@@ -107,6 +106,7 @@ flowchart LR
 
     OI --- DB1
     OM --- DB2
+    FUL --- DB4
     NS --- DB3
     OI --- R
 ```
@@ -119,18 +119,18 @@ at startup.
 ```mermaid
 flowchart LR
     OI["order-intake-service"] -- "order.accepted<br/>(outbox relay)" --> EX{{"orders.events<br/>topic exchange"}}
-    OM["order-management-service"] -- "approval-requested · approved ·<br/>rejected · submitted · fulfilment-failed<br/>(outbox relay)" --> EX
+    OM["order-approval-service"] -- "approval-requested · approved ·<br/>rejected · submitted · fulfilment-failed<br/>(outbox relay)" --> EX
 
-    EX -- "order.accepted" --> Q1[["order-management.order-accepted"]] --> OM
-    EX -- "order.accepted · approval-requested ·<br/>fulfilment-failed" --> Q2[["notification.order-events"]] --> NS["notification-service"]
-    EX -. "order.#" .-> Q3[["fulfilment.order-events<br/>care.order-events<br/><i>demo queues</i>"]]
+    EX -- "order.accepted" --> Q1[["order-approval.order-accepted"]] --> OM
+    EX -- "order.accepted · approval-requested ·<br/>fulfilment-failed" --> Q2[["care.order-events"]] --> NS["care-service"]
 
     Q1 -. "after retries" .-> DLQ1[["…order-accepted.dlq"]]
     Q2 -. "after retries" .-> DLQ2[["…order-events.dlq"]]
 ```
 
-The demo queues stand in for Fulfilment and Care, which in production declare and own their own queues.
-They let a reviewer see every event arrive in the RabbitMQ UI.
+Fulfilment does not consume the event directly: approval must happen first, so order-approval consumes it,
+holds the order if needed, and submits it to Fulfilment over REST. Other systems can bind their own queues to
+the exchange (contract in `docs/events.md`).
 
 ### 4.3 Services and responsibilities
 
@@ -138,15 +138,18 @@ They let a reviewer see every event arrive in the RabbitMQ UI.
 |---|---|---|---|---|
 | **config-server** | Reads `config-repo/` from git | `/{app}/{profile}` (HTTP Basic, internal) | — | — |
 | **order-intake-service** | Product catalogue, order receipts, idempotency records, outbox | **Public** `/api/v1/orders`, `/api/v1/catalogue/products` | — | `order.accepted` |
-| **order-management-service** | The order and its lifecycle, approvals, Fulfilment submission, outbox, inbox | **Private** `/api/v1/orders`, `/approve`, `/reject`, `/api/v1/approval-policy` | `order.accepted` | `order.approval-requested`, `order.approved`, `order.rejected`, `order.submitted`, `order.fulfilment-failed` |
-| **notification-service** | Email templates, notification log | Actuator only | `order.accepted`, `order.approval-requested`, `order.fulfilment-failed` | — |
-| **fulfilment-stub** | In-memory fulfilment orders | `/api/v1/fulfilment-orders` | — | — |
+| **order-approval-service** | The order and its lifecycle, approvals, Fulfilment submission, outbox, inbox | **Private** `/api/v1/orders`, `/approve`, `/reject`, `/api/v1/approval-policy` | `order.accepted` | `order.approval-requested`, `order.approved`, `order.rejected`, `order.submitted`, `order.fulfilment-failed` |
+| **care-service** | Email templates, notification log | Actuator only | `order.accepted`, `order.approval-requested`, `order.fulfilment-failed` | — |
+| **fulfilment-service** | Final fulfilment orders, durable idempotency | Service API `/api/v1/fulfilment-orders` (client credentials) | — (REST from order-approval) | — |
 
-**Why these three business services?**
+**Why these four business services?** They follow the brief's own vocabulary:
 - **Intake** is the internet-facing edge. It stays small and available even when everything behind it is
   down; it makes no synchronous call to another business service.
-- **Order management** is the system of record for an order's lifecycle.
-- **Notification** is a separate failure domain: an SMTP outage must not affect orders.
+- **Order approval** is the system of record for an order's lifecycle up to fulfilment: it persists the
+  order, runs the approval gate and submits approved orders.
+- **Fulfilment** creates the final fulfilment order. Approval must come first, so it receives orders over
+  REST from order-approval rather than from the queue.
+- **Care** emails an agent. It is a separate failure domain: an SMTP outage must not affect orders.
 - A modular monolith would be my default at this size. The requirement is for microservices, so the
   boundaries are drawn where a split pays off: different exposure (public vs private), different failure
   domains (SMTP), different owners of state.
@@ -164,9 +167,9 @@ Melita/
 ├── platform-common/         (error model, request-ID filter, security error handlers, outbox, inbox, PII encryption)
 ├── config-server/
 ├── order-intake-service/
-├── order-management-service/
-├── notification-service/
-├── fulfilment-stub/
+├── order-approval-service/
+├── care-service/
+├── fulfilment-service/
 ├── config-repo/             (configuration served by Config Server)
 ├── infra/                   (Keycloak realm, MySQL init script, RabbitMQ users/permissions setup script)
 ├── postman/                 (collection and environments)
@@ -240,19 +243,19 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant MQ as RabbitMQ
-    participant NS as notification
+    participant NS as care
     participant SMTP
-    participant OM as order-management
-    participant DB as order_management DB
+    participant OM as order-approval
+    participant DB as order_approval DB
     participant Agent
     participant FUL as Fulfilment
 
-    par notification queue
+    par care queue
         MQ->>NS: order.accepted
         NS->>NS: claim notification row (PENDING → SENDING with a lease, already SENT → skip)
         NS->>SMTP: "New order" email to agents' mailbox
         NS->>NS: mark SENT
-    and order-management queue
+    and order-approval queue
         MQ->>OM: order.accepted
         rect rgb(235,245,255)
         note over OM,DB: one transaction
@@ -303,9 +306,9 @@ sequenceDiagram
 
 | Pattern | Where | Why |
 |---|---|---|
-| **Transactional Outbox** + polling relay | Intake and management publish only through `outbox_event` | "Order saved ⇔ event published" without distributed transactions |
-| **Idempotency Key** | Inbound `POST /orders`; outbound calls to Fulfilment | Callers retry on timeouts; retries must not create duplicates |
-| **Idempotent Receiver** (inbox) | `processed_message` in management; `notification` unique key | RabbitMQ delivers at least once |
+| **Transactional Outbox** + polling relay | Intake and order-approval publish only through `outbox_event` | "Order saved ⇔ event published" without distributed transactions |
+| **Idempotency Key** | Inbound `POST /orders`; order-approval → Fulfilment, enforced durably by Fulfilment | Callers retry on timeouts; retries must not create duplicates |
+| **Idempotent Receiver** (inbox) | `processed_message` in order-approval; `notification` unique key in Care | RabbitMQ delivers at least once |
 | **Publish–Subscribe** (topic exchange) | `orders.events` | Each consumer gets its own copy; new consumers don't change the producer |
 | **Dead Letter Channel** | A DLQ per consumer queue | Failed messages are parked, not lost, and don't block the queue |
 | **Event-Carried State Transfer** | `order.accepted` carries the full validated order | Consumers never call back to intake |
@@ -375,7 +378,7 @@ sequenceDiagram
 - "Today" and age are computed in **Europe/Malta** from an injected `Clock`, so date rules are correct
   around midnight and deterministic in tests.
 
-### 7.3 Order lifecycle (order-management)
+### 7.3 Order lifecycle (order-approval)
 
 ```mermaid
 stateDiagram-v2
@@ -401,7 +404,7 @@ stateDiagram-v2
 ### 7.4 Approval policy
 
 ```yaml
-# config-repo/order-management.yml
+# config-repo/order-approval-service.yml
 approval:
   required-packages: [MOBILE_POSTPAID, INTERNET_1GBPS]
   required-products: []          # e.g. [TV] to require approval for any TV package
@@ -410,7 +413,7 @@ approval:
 - It is evaluated **once, when the order is received**, against the items carried in the event. The
   matched rules are stored on the order (`approval_reasons`), so a policy change never re-classifies
   orders in flight, and the agent sees *why* an order is held.
-- Changing it: commit to the config repo, then `POST /actuator/refresh` on order-management. The
+- Changing it: commit to the config repo, then `POST /actuator/refresh` on order-approval. The
   `ApprovalPolicy` bean is `@RefreshScope`, so it is rebuilt with the new values.
 - `GET /api/v1/approval-policy` shows the active policy.
 
@@ -445,7 +448,7 @@ never include stack traces or internal messages.
 | GET | `/api/v1/orders/{orderId}` | scope `orders:read`, own orders only | 200 receipt | 404 (also for another partner's order, so existence is not leaked) |
 | GET | `/api/v1/catalogue/products` | scope `orders:read` | 200 products and packages | 401, 403 |
 
-### 8.2 Private Order Approval API (order-management, port 8082)
+### 8.2 Private Order Approval API (order-approval, port 8082)
 
 | Method | Path | Auth | Success | Errors |
 |---|---|---|---|---|
@@ -458,23 +461,32 @@ never include stack traces or internal messages.
 - The deciding agent is taken from the JWT, never from the request body, and stored for audit.
 - `SUPERVISOR` is a composite role that includes `AGENT`.
 
-### 8.3 Fulfilment contract (stub, port 8084)
+### 8.3 Ordering Fulfilment API (fulfilment-service, port 8084)
 
-```
-POST /api/v1/fulfilment-orders
-Authorization: Bearer <client-credentials JWT, scope fulfilment:submit>
-Idempotency-Key: <orderId>
-{ "orderId", "externalReference", "customer", "installation" (incl. preferredSlotExpired), "items" }
-```
+A service-to-service API: client-credentials JWT with audience `fulfilment-api`.
+
+| Method | Path | Auth | Success | Errors |
+|---|---|---|---|---|
+| POST | `/api/v1/fulfilment-orders` | scope `fulfilment:submit`; header `Idempotency-Key` required (order-approval sends the `orderId`) | **201** + `Location` + `{fulfilmentReference, orderId, status: SCHEDULED, receivedAt}`; the same key and body return the original with **200** | 400 invalid body or key, 401, 403, 409 `IDEMPOTENCY_KEY_REUSED` (same key, different body), 409 `ORDER_ALREADY_SUBMITTED` (same order under another key) |
+| GET | `/api/v1/fulfilment-orders/{fulfilmentReference}` | scope `fulfilment:read` | 200 detail, ID number masked | 404 |
+
+Request body: `{ orderId, externalReference, partnerId, customer, installation (incl. preferredSlotExpired), items }`.
+
+**Durable idempotency.** The key and a canonical hash of the request are stored with the fulfilment order, in
+the same row, so a retry is answered from the database, also after a restart. Concurrent submissions with
+one key are settled by the unique keys: the loser re-reads and replays.
+
+How order-approval's submitter treats the answers:
 
 | Response | Submitter outcome |
 |---|---|
-| 201 `{ "fulfilmentReference": "FUL-…" }`, or 200 replay | `SUBMITTED` |
+| 201, or 200 replay | `SUBMITTED` |
 | 400 / 401 / 403 / 409 / 422 | `FULFILMENT_FAILED`; not retried, because retrying cannot help |
-| 429 / 5xx / timeout | Retried with exponential backoff, at most 5 attempts |
+| 429 / 5xx / timeout / unreadable body | Retried with exponential backoff, at most 5 attempts |
 
-The stub answers any status on demand via an `X-Stub-Force-Status` request header, so failure paths are
-easy to exercise from tests and Postman.
+**No test hooks in production code.** fulfilment-service has no switches to fail on demand. The failure
+paths are tested in order-approval's integration tests, which replace Fulfilment with a scripted test fake
+(`FakeFulfilment`: e.g. 503 then 201).
 
 ## 9. Messaging design
 
@@ -482,9 +494,8 @@ easy to exercise from tests and Postman.
 
 | Exchange | Queue ← routing keys |
 |---|---|
-| `orders.events` (topic) | `order-management.order-accepted` ← `order.accepted` |
-| | `notification.order-events` ← `order.accepted`, `order.approval-requested`, `order.fulfilment-failed` |
-| | demo: `fulfilment.order-events`, `care.order-events` ← `order.#` |
+| `orders.events` (topic) | `order-approval.order-accepted` ← `order.accepted` |
+| | `care.order-events` ← `order.accepted`, `order.approval-requested`, `order.fulfilment-failed` |
 | `orders.events.dlx` (direct) | `<queue>.dlq` ← the queue's name |
 
 - Consumer queues are durable **quorum queues** with `x-dead-letter-exchange` and an explicit
@@ -516,8 +527,8 @@ easy to exercise from tests and Postman.
 |---|---|---|
 | DB → broker | At-least-once | Outbox; a row is marked published only after the broker confirms it |
 | Broker → consumer | At-least-once | Ack after the listener succeeds |
-| Side effect | Once per message | Inbox row in the same transaction (management); unique `notification` row (notification) |
-| Ordering | Not guaranteed | Not needed: management reacts to one event type, and notification treats each event independently |
+| Side effect | Once per message | Inbox row in the same transaction (order-approval); unique `notification` row with a lease (Care) |
+| Ordering | Not guaranteed | Not needed: order-approval reacts to one event type, and Care treats each event independently |
 
 **Consumer errors**, in two classes:
 - **Poison** (unreadable or invalid payload): straight to the DLQ, since retrying cannot help.
@@ -534,7 +545,7 @@ Only one consumer can claim an email: a conditional update moves the row from `P
 `SENDING` with a 2-minute lease. If two copies of the same event arrive at once, the second claim fails and
 that copy is skipped. A failed send releases the row for the listener's retry.
 
-A known edge case: if notification crashes after the SMTP send but before marking the row `SENT`, the lease
+A known edge case: if Care crashes after the SMTP send but before marking the row `SENT`, the lease
 expires and a redelivery sends the email again. This is accepted, since email is at-least-once by nature.
 
 Dead-lettering logs only the message ID and type, never the body: an `order.accepted` body contains personal
@@ -542,11 +553,11 @@ data. (Spring's stock `RejectAndDontRequeueRecoverer` logs the whole message, so
 
 ## 10. Data design
 
-**Database per service.** Each service owns its database (`order_intake`, `order_management`,
-`notification`):
+**Database per service.** Each service owns its database (`order_intake`, `order_approval`, `fulfilment`,
+`care`):
 - each is accessed only through that service's DB user, whose grants cover that database alone;
 - no service touches another's data. Data moves only through events and APIs.
-- Locally the three databases share one MySQL server; in production they can be split by changing the
+- Locally the four databases share one MySQL server; in production they can be split by changing the
   JDBC URL only.
 
 **Conventions:**
@@ -578,7 +589,7 @@ data. (Spring's stock `RejectAndDontRequeueRecoverer` logs the whole message, so
   (replay or 422) and then the reference (409). A retried request is therefore always replayed, never
   answered with a 409.
 
-### 10.2 `order_management` and `notification`
+### 10.2 `order_approval`, `fulfilment` and `care`
 
 | Table | Key columns and constraints | Indexes |
 |---|---|---|
@@ -587,10 +598,11 @@ data. (Spring's stock `RejectAndDontRequeueRecoverer` logs the whole message, so
 | `order_status_history` | `id` PK, `order_id` FK, `from_status`, `to_status`, `actor`, `reason`, `occurred_at` | `(order_id, occurred_at)` |
 | `processed_message` | **PK(`message_id`)**, `processed_at` | — |
 | `outbox_event` | as in intake | as in intake |
-| `notification` *(notification DB)* | `id` PK, `event_id`, `template`, `order_id`, `recipient`, `status` (`PENDING`/`SENDING`/`SENT`/`FAILED`), `claimed_until` (lease), `attempts`, `last_error`, `created_at`, `sent_at`; **UNIQUE(`event_id`, `template`)** | the unique key is the dedupe |
+| `fulfilment_order` *(fulfilment DB)* | `id` PK, `fulfilment_reference` UNIQUE, `idempotency_key` UNIQUE, `request_hash`, `order_id` UNIQUE, `partner_id`, `external_reference`, `status`, customer (ID number **encrypted**), installation (nullable) incl. `preferred_slot_expired`, `received_at`; items in `fulfilment_order_item` | the unique keys are the idempotency and duplicate checks |
+| `notification` *(care DB)* | `id` PK, `event_id`, `template`, `order_id`, `recipient`, `status` (`PENDING`/`SENDING`/`SENT`/`FAILED`), `claimed_until` (lease), `attempts`, `last_error`, `created_at`, `sent_at`; **UNIQUE(`event_id`, `template`)** | the unique key is the dedupe |
 
-- **ID document number:** encrypted with AES-256-GCM by a JPA `AttributeConverter`, with the key from the
-  environment. Stored as `v1:<base64>`; the prefix leaves room for key rotation. It is masked (`****56M`)
+- **ID document number:** encrypted with AES-256-GCM by a JPA `AttributeConverter` in order-approval and in
+  fulfilment, each with **its own key** from the environment. Stored as `v1:<base64>`; the prefix leaves room for key rotation. It is masked (`****56M`)
   in the API and emails, and never logged.
 - **N+1:** the list endpoint uses a projection without items; the detail endpoint loads items with
   `@EntityGraph`.
@@ -625,8 +637,8 @@ every instance, but each tick first takes a MySQL named lock: `GET_LOCK('outbox-
 | Client / user | Flow | Token |
 |---|---|---|
 | `erp-partner`, `other-partner` | client credentials | `aud=order-intake-api`, `scope=orders:write orders:read`, `partner_id` claim |
-| `order-management` | client credentials | `aud=fulfilment-api`, `scope=fulfilment:submit` |
-| `agent-console` (**local realm only**) | password grant for the test users | `aud=order-management-api`, roles `AGENT` / `SUPERVISOR` |
+| `order-approval` | client credentials | `aud=fulfilment-api`, `scope=fulfilment:submit fulfilment:read` |
+| `agent-console` (**local realm only**) | password grant for the test users | `aud=order-approval-api`, roles `AGENT` / `SUPERVISOR` |
 | users `agent1`, `supervisor1` | — | `SUPERVISOR` includes `AGENT` |
 
 - **Partner identity** comes from a dedicated `partner_id` claim, not from the OAuth client ID, so a
@@ -710,8 +722,8 @@ catalogue is read from MySQL.
 |---|---|
 | **Unit** (JUnit 5, fixed `Clock`) | Every validation and business rule, including dates at Malta midnight; every state transition, valid and invalid; approval policy matching; request-hash canonicalisation; ID-number encryption and masking |
 | **Web slice** (`@WebMvcTest` + `jwt()`) | Error responses (400/422 shapes); the security matrix: 401/403 per endpoint, scope and role, and 404 for another partner's order |
-| **Integration** (`@SpringBootTest` + Testcontainers MySQL, RabbitMQ, Redis, Mailpit; WireMock for Fulfilment) | Order → outbox → RabbitMQ; **parallel duplicate Idempotency-Key**; replay, 422 and 409 cases; **duplicate event delivery**; **concurrent approve vs reject**; poison message → DLQ; Fulfilment 201 / 5xx-then-201 / 4xx; email content via Mailpit; Redis down → catalogue from DB |
-| **Postman + Newman** (against `docker compose up`) | Real Keycloak tokens; happy path to `SUBMITTED`; validation and auth failures; idempotent replay; approval and rejection; email received |
+| **Integration** (`@SpringBootTest` + Testcontainers MySQL, RabbitMQ, Redis, Mailpit) | Order → outbox → RabbitMQ; **parallel duplicate Idempotency-Key**; replay, 422 and 409 cases; **duplicate event delivery**; **concurrent approve vs reject**; poison message → DLQ; email content via Mailpit; Redis down → catalogue from DB. In order-approval, Fulfilment is replaced by a scripted test fake (`FakeFulfilment`, a small HTTP server) to prove 201, 5xx-then-201, 4xx, unreadable body and retry exhaustion. In fulfilment-service: persistence with the ID number encrypted, replay, both 409 cases, parallel submissions with one key |
+| **Postman + Newman** (against `docker compose up`) | Real Keycloak tokens; happy path to `SUBMITTED` **and the final order present in fulfilment-service**; validation and auth failures (including wrong audience per API); idempotent replay; approval and rejection; email received |
 
 - Repositories and constraints are tested through the services, against real MySQL; there is no separate
   `@DataJpaTest` layer.
@@ -721,7 +733,7 @@ catalogue is read from MySQL.
 
 | In this release | Production roadmap (README) |
 |---|---|
-| Config Server, three services, the Fulfilment stub, and a compose stack | Separate config repo; secrets in Vault; Kubernetes |
+| Config Server, four services (intake, order-approval, fulfilment, care) and a compose stack | Separate config repo; secrets in Vault; Kubernetes |
 | Public API: validation, idempotency, outbox, catalogue cache | API gateway with mTLS and per-partner rate limiting; partner webhooks and live order status |
 | Order processing: inbox, retries, DLQs, approval API, Fulfilment submitter with breaker | Supervisor retry for failed fulfilments; admin API for approval rules (alternative reading of A7); four-eyes approval |
 | Email notifications with a notification log | Bounce processing; approval reminders |
@@ -733,7 +745,8 @@ catalogue is read from MySQL.
 |---|---|---|
 | RabbitMQ topic exchange | Kafka | Fan-out to several consumers with per-queue dead-lettering fits; volume is modest; event replay is not required |
 | Keycloak + JWT resource servers | Own authorisation server; API keys | Standard OAuth2 flows for machines and people; no home-grown identity provider |
-| Three business services | Two (email inside management); four (separate approval service) | Separates the public edge, the order lifecycle and email delivery without a saga |
+| Four business services named after the brief: intake, order-approval, fulfilment, care | Fewer (email or fulfilment inside order-approval); Fulfilment consuming the event directly | Approval must precede fulfilment, so order-approval sits between the event and Fulfilment; Care is a separate failure domain; no saga needed |
+| Failure scenarios only in test fakes, never in production services | Failure switches in the Fulfilment API | Production code stays clean; failure paths are tested deterministically in the caller's integration tests |
 | Transactional outbox, single active relay (MySQL named lock) | Publish after commit; ShedLock; Debezium CDC | Atomic with no extra infrastructure; immediate failover; CDC is the production upgrade |
 | Idempotency in MySQL | Redis `SET NX` | Same transaction as the order: no stuck keys after a crash, no duplicates if Redis loses data |
 | Approval policy in Spring Cloud Config, whole-order approval | Flags in the catalogue; per-item approval | Approval rules change without a release; no partially installed orders |

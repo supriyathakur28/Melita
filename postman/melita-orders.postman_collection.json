@@ -177,6 +177,46 @@
               }
             }
           ]
+        },
+        {
+          "name": "Fulfilment reader token (order-approval service client)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{keycloakUrl}}/realms/melita/protocol/openid-connect/token",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "order-approval"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{orderApprovalSecret}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('token issued', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('fulfilmentToken', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -693,7 +733,73 @@
                   "} else {",
                   "    pm.collectionVariables.set('pollAttempt', 0);",
                   "    pm.test('order reaches SUBMITTED', () => pm.expect(status).to.eql('SUBMITTED'));",
+                  "    if (status === 'SUBMITTED') {",
+                  "        pm.collectionVariables.set('fulfilmentReference', pm.response.json().fulfilmentReference);",
+                  "    }",
                   "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fulfilment service holds the final order",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{fulfilmentUrl}}/api/v1/fulfilment-orders/{{fulfilmentReference}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{fulfilmentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('same order', () => pm.expect(body.orderId).to.eql(pm.collectionVariables.get('orderId')));",
+                  "pm.test('scheduled', () => pm.expect(body.status).to.eql('SCHEDULED'));",
+                  "pm.test('ID number masked', () => pm.expect(body.idDocumentNumberMasked).to.eql('****56M'));",
+                  "pm.test('no clear ID number', () => pm.expect(pm.response.text()).to.not.include('123456M'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A partner token cannot use the Fulfilment API (wrong audience)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{fulfilmentUrl}}/api/v1/fulfilment-orders/{{fulfilmentReference}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{partnerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('401', () => pm.response.to.have.status(401));"
                 ]
               }
             }
@@ -824,6 +930,9 @@
                   "} else {",
                   "    pm.collectionVariables.set('pollAttempt', 0);",
                   "    pm.test('order reaches PENDING_APPROVAL', () => pm.expect(status).to.eql('PENDING_APPROVAL'));",
+                  "    if (status === 'SUBMITTED') {",
+                  "        pm.collectionVariables.set('fulfilmentReference', pm.response.json().fulfilmentReference);",
+                  "    }",
                   "}"
                 ]
               }
@@ -1067,7 +1176,40 @@
                   "} else {",
                   "    pm.collectionVariables.set('pollAttempt', 0);",
                   "    pm.test('order reaches SUBMITTED', () => pm.expect(status).to.eql('SUBMITTED'));",
+                  "    if (status === 'SUBMITTED') {",
+                  "        pm.collectionVariables.set('fulfilmentReference', pm.response.json().fulfilmentReference);",
+                  "    }",
                   "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approved order is stored by the Fulfilment service",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{fulfilmentUrl}}/api/v1/fulfilment-orders/{{fulfilmentReference}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{fulfilmentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('same order', () => pm.expect(pm.response.json().orderId).to.eql(pm.collectionVariables.get('heldOrderId')));"
                 ]
               }
             }
@@ -1165,6 +1307,9 @@
                   "} else {",
                   "    pm.collectionVariables.set('pollAttempt', 0);",
                   "    pm.test('order reaches PENDING_APPROVAL', () => pm.expect(status).to.eql('PENDING_APPROVAL'));",
+                  "    if (status === 'SUBMITTED') {",
+                  "        pm.collectionVariables.set('fulfilmentReference', pm.response.json().fulfilmentReference);",
+                  "    }",
                   "}"
                 ]
               }
@@ -1379,6 +1524,14 @@
     },
     {
       "key": "firstResponse",
+      "value": ""
+    },
+    {
+      "key": "fulfilmentToken",
+      "value": ""
+    },
+    {
+      "key": "fulfilmentReference",
       "value": ""
     }
   ]

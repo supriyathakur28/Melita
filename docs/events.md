@@ -1,7 +1,7 @@
 # Order events: contract for consumers
 
-Fulfilment, Care and any other system can follow the order lifecycle by binding their own queue to the
-`orders.events` exchange. This page is the contract; the Java records live in `order-events-contract/`.
+Any system can follow the order lifecycle by binding its own queue to the `orders.events` exchange.
+Inside the platform, order-approval and care consume it. This page is the contract; the Java records live in `order-events-contract/`.
 
 ## Binding a queue
 
@@ -11,8 +11,8 @@ Fulfilment, Care and any other system can follow the order lifecycle by binding 
 | Routing key | the event type, e.g. `order.accepted`; bind `order.#` for everything |
 | Your queue | owned and declared by you; durable quorum queue with your own dead-letter queue recommended |
 
-The local stack declares two demo queues bound to `order.#`, `fulfilment.order-events` and
-`care.order-events`, so every event can be inspected in the RabbitMQ UI (http://localhost:15672).
+Inside the platform, `order-approval.order-accepted` and `care.order-events` are bound this way. Any other
+team binds its own queue the same way.
 
 ## Delivery semantics
 
@@ -51,11 +51,11 @@ AMQP properties repeat the metadata:
 | Event | Published by | When | Personal data |
 |---|---|---|---|
 | `order.accepted` | order-intake | An order passed validation and was accepted | **Yes**: the full order |
-| `order.approval-requested` | order-management | The order contains a product or package that needs an agent's approval | No |
-| `order.approved` | order-management | An agent approved a held order | No |
-| `order.rejected` | order-management | An agent rejected a held order (final) | No |
-| `order.submitted` | order-management | Fulfilment accepted the order | No |
-| `order.fulfilment-failed` | order-management | Fulfilment refused the order, or retries were exhausted; needs manual follow-up | No |
+| `order.approval-requested` | order-approval | The order contains a product or package that needs an agent's approval | No |
+| `order.approved` | order-approval | An agent approved a held order | No |
+| `order.rejected` | order-approval | An agent rejected a held order (final) | No |
+| `order.submitted` | order-approval | Fulfilment accepted the order | No |
+| `order.fulfilment-failed` | order-approval | Fulfilment refused the order, or retries were exhausted; needs manual follow-up | No |
 
 Only `order.accepted` carries personal data, because Fulfilment and Care need it. Handle it accordingly:
 restrict access to your queue and do not log the payload. Later events refer to the order by `orderId`.
