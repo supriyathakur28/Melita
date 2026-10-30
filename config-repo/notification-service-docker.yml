@@ -1,5 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:mysql://mysql:3306/notification?connectionTimeZone=UTC
-  mail:
-    host: mailpit

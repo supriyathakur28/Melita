@@ -12,7 +12,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       ORDER_INTAKE_DB_PASSWORD: ${ORDER_INTAKE_DB_PASSWORD}
       ORDER_APPROVAL_DB_PASSWORD: ${ORDER_APPROVAL_DB_PASSWORD}
-      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+      CARE_DB_PASSWORD: ${CARE_DB_PASSWORD}
     command: ["--default-time-zone=+00:00"]
     ports:
       - "127.0.0.1:3306:3306"
@@ -50,7 +50,7 @@ services:
       RABBITMQ_ADMIN_PASSWORD: ${RABBITMQ_ADMIN_PASSWORD}
       ORDER_INTAKE_RABBITMQ_PASSWORD: ${ORDER_INTAKE_RABBITMQ_PASSWORD}
       ORDER_APPROVAL_RABBITMQ_PASSWORD: ${ORDER_APPROVAL_RABBITMQ_PASSWORD}
-      NOTIFICATION_RABBITMQ_PASSWORD: ${NOTIFICATION_RABBITMQ_PASSWORD}
+      CARE_RABBITMQ_PASSWORD: ${CARE_RABBITMQ_PASSWORD}
     volumes:
       - ./infra/rabbitmq/setup.sh:/setup.sh:ro
     entrypoint: ["/bin/sh", "/setup.sh"]
@@ -178,17 +178,17 @@ services:
       timeout: 5s
       retries: 40
 
-  notification-service:
+  care-service:
     build:
       context: .
       args:
-        MODULE: notification-service
+        MODULE: care-service
     environment:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
-      NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
-      NOTIFICATION_RABBITMQ_PASSWORD: ${NOTIFICATION_RABBITMQ_PASSWORD}
+      CARE_DB_PASSWORD: ${CARE_DB_PASSWORD}
+      CARE_RABBITMQ_PASSWORD: ${CARE_RABBITMQ_PASSWORD}
     depends_on:
       config-server:
         condition: service_healthy

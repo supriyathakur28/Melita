@@ -1,7 +1,7 @@
 #!/bin/sh
-# One-shot setup through the RabbitMQ management API, run by the rabbitmq-setup compose service:
-#  - one user per service, allowed only on its own exchange and queues (least privilege);
-#  - demo queues standing in for Fulfilment and Care, so every event can be seen in the management UI.
+# One-shot setup through the RabbitMQ management API, run by the rabbitmq-setup compose service: one user
+# per service, allowed only on its own exchange and queues (least privilege). Each service declares its own
+# queues in code.
 set -eu
 
 API="http://rabbitmq:15672/api"
@@ -22,16 +22,9 @@ user order-intake "$ORDER_INTAKE_RABBITMQ_PASSWORD" \
   '^orders\\.events.*$' '^orders\\.events$' '^$'
 user order-approval "$ORDER_APPROVAL_RABBITMQ_PASSWORD" \
   '^(orders\\.events.*|order-approval\\..*)$' '^(orders\\.events.*|order-approval\\..*)$' '^(orders\\.events.*|order-approval\\..*)$'
-# notification only consumes: it may bind its queues (read on the exchanges) and declare them with the
-# dead-letter exchange (RabbitMQ requires write on the DLX for that), but never publish to orders.events.
-user notification "$NOTIFICATION_RABBITMQ_PASSWORD" \
-  '^(orders\\.events.*|notification\\..*)$' '^(orders\\.events\\.dlx|notification\\..*)$' '^(orders\\.events.*|notification\\..*)$'
+# care only consumes: it may bind its queues (read on the exchanges) and declare them with the dead-letter
+# exchange (RabbitMQ requires write on the DLX for that), but never publish to orders.events.
+user care "$CARE_RABBITMQ_PASSWORD" \
+  '^(orders\\.events.*|care\\..*)$' '^(orders\\.events\\.dlx|care\\..*)$' '^(orders\\.events.*|care\\..*)$'
 
-put "exchanges/%2F/orders.events" '{"type":"topic","durable":true}'
-for queue in fulfilment.order-events care.order-events; do
-  put "queues/%2F/$queue" '{"durable":true,"arguments":{"x-queue-type":"quorum"}}'
-  curl -fsS -u "$AUTH" -H 'content-type: application/json' -X POST \
-    "$API/bindings/%2F/e/orders.events/q/$queue" -d '{"routing_key":"order.#"}'
-done
-
-echo "RabbitMQ users, permissions and demo queues are set up."
+echo "RabbitMQ users and permissions are set up."

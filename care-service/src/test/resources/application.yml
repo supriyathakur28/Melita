@@ -1,0 +1,30 @@
+# Tests run without the Config Server; this file replaces src/main/resources/application.yml.
+spring:
+  application:
+    name: care-service
+  cloud:
+    config:
+      enabled: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  mail:
+    properties:
+      mail.smtp.connectiontimeout: 2000
+      mail.smtp.timeout: 2000
+
+notification:
+  agents-mailbox: agents@melita.example
+  from: order-platform@melita.example
+
+messaging:
+  listener:
+    retry:
+      max-retries: 1
+      initial-delay: 100ms
+      max-delay: 200ms
