@@ -115,6 +115,14 @@ class OrderRulesTest {
     }
 
     @Test
+    void zeroLeadTimeAllowsToday() {
+        var sameDay = new InstallationProperties(0, 60, Set.of(DayOfWeek.SUNDAY), Set.of(), null);
+        var rules = new OrderRules(sameDay, Clock.fixed(WEDNESDAY_MORNING, ZoneOffset.UTC));
+
+        assertThat(rules.check(TestOrders.internetAndMobile("A", LocalDate.of(2026, 11, 4)), CATALOGUE)).isEmpty();
+    }
+
+    @Test
     void todayIsTakenInMaltaNotUtc() {
         // 23:30 UTC on Wednesday 4 Nov is already Thursday 5 Nov in Malta: earliest date moves from Fri to Sat.
         Instant lateWednesdayUtc = Instant.parse("2026-11-04T23:30:00Z");
