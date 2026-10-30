@@ -22,7 +22,7 @@
         <module>platform-common</module>
         <module>config-server</module>
         <module>order-intake-service</module>
-        <module>fulfilment-stub</module>
+        <module>fulfilment-service</module>
         <module>order-approval-service</module>
         <module>care-service</module>
     </modules>

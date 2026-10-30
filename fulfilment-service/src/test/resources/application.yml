@@ -1,0 +1,26 @@
+# Tests run without the Config Server; this file replaces src/main/resources/application.yml.
+spring:
+  application:
+    name: fulfilment-service
+  cloud:
+    config:
+      enabled: false
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/melita
+          jwk-set-uri: http://localhost:1/certs
+          audiences: fulfilment-api
+
+pii:
+  # Test-only key.
+  encryption-key: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=

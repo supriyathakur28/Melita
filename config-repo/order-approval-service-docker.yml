@@ -3,4 +3,4 @@ spring:
     url: jdbc:mysql://mysql:3306/order_approval?connectionTimeZone=UTC
 
 fulfilment:
-  base-url: http://fulfilment-stub:8084
+  base-url: http://fulfilment-service:8084

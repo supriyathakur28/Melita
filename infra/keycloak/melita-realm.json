@@ -52,6 +52,15 @@
       }
     },
     {
+      "name": "fulfilment:read",
+      "description": "Read fulfilment orders",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
       "name": "roles",
       "protocol": "openid-connect",
       "attributes": {
@@ -235,6 +244,7 @@
       ],
       "defaultClientScopes": [
         "fulfilment:submit",
+        "fulfilment:read",
         "basic"
       ],
       "optionalClientScopes": []

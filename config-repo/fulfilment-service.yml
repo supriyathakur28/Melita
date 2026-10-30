@@ -1,0 +1,24 @@
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/fulfilment?connectionTimeZone=UTC
+    username: fulfilment
+    password: ${FULFILMENT_DB_PASSWORD}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          audiences: fulfilment-api
+
+management:
+  endpoint:
+    health:
+      group:
+        # No broker: Fulfilment receives orders over REST only.
+        readiness:
+          include: readinessState,db
+
+pii:
+  encryption-key: ${FULFILMENT_PII_ENCRYPTION_KEY}
