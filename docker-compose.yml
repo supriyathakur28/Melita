@@ -11,7 +11,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       ORDER_INTAKE_DB_PASSWORD: ${ORDER_INTAKE_DB_PASSWORD}
-      ORDER_MANAGEMENT_DB_PASSWORD: ${ORDER_MANAGEMENT_DB_PASSWORD}
+      ORDER_APPROVAL_DB_PASSWORD: ${ORDER_APPROVAL_DB_PASSWORD}
       NOTIFICATION_DB_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
     command: ["--default-time-zone=+00:00"]
     ports:
@@ -49,7 +49,7 @@ services:
     environment:
       RABBITMQ_ADMIN_PASSWORD: ${RABBITMQ_ADMIN_PASSWORD}
       ORDER_INTAKE_RABBITMQ_PASSWORD: ${ORDER_INTAKE_RABBITMQ_PASSWORD}
-      ORDER_MANAGEMENT_RABBITMQ_PASSWORD: ${ORDER_MANAGEMENT_RABBITMQ_PASSWORD}
+      ORDER_APPROVAL_RABBITMQ_PASSWORD: ${ORDER_APPROVAL_RABBITMQ_PASSWORD}
       NOTIFICATION_RABBITMQ_PASSWORD: ${NOTIFICATION_RABBITMQ_PASSWORD}
     volumes:
       - ./infra/rabbitmq/setup.sh:/setup.sh:ro
@@ -76,7 +76,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       # Tokens always carry iss=http://localhost:8180/realms/melita, whether requested from the host
-      # (Postman) or from inside the network (order-management). Services fetch keys via keycloak:8180.
+      # (Postman) or from inside the network (order-approval). Services fetch keys via keycloak:8180.
       KC_HOSTNAME: http://localhost:8180
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KC_HEALTH_ENABLED: "true"
@@ -153,18 +153,18 @@ services:
       timeout: 5s
       retries: 40
 
-  order-management-service:
+  order-approval-service:
     build:
       context: .
       args:
-        MODULE: order-management-service
+        MODULE: order-approval-service
     environment:
       SPRING_PROFILES_ACTIVE: docker
       CONFIG_SERVER_URL: http://config-server:8888
       CONFIG_SERVER_PASSWORD: ${CONFIG_SERVER_PASSWORD}
-      ORDER_MANAGEMENT_DB_PASSWORD: ${ORDER_MANAGEMENT_DB_PASSWORD}
-      ORDER_MANAGEMENT_RABBITMQ_PASSWORD: ${ORDER_MANAGEMENT_RABBITMQ_PASSWORD}
-      ORDER_MANAGEMENT_CLIENT_SECRET: ${ORDER_MANAGEMENT_CLIENT_SECRET}
+      ORDER_APPROVAL_DB_PASSWORD: ${ORDER_APPROVAL_DB_PASSWORD}
+      ORDER_APPROVAL_RABBITMQ_PASSWORD: ${ORDER_APPROVAL_RABBITMQ_PASSWORD}
+      ORDER_APPROVAL_CLIENT_SECRET: ${ORDER_APPROVAL_CLIENT_SECRET}
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY}
     ports:
       - "127.0.0.1:8082:8082"   # private Order Approval API (internal network only in production)

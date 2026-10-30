@@ -20,8 +20,8 @@ user() {
 # Backslashes are doubled because the patterns are embedded in JSON strings.
 user order-intake "$ORDER_INTAKE_RABBITMQ_PASSWORD" \
   '^orders\\.events.*$' '^orders\\.events$' '^$'
-user order-management "$ORDER_MANAGEMENT_RABBITMQ_PASSWORD" \
-  '^(orders\\.events.*|order-management\\..*)$' '^(orders\\.events.*|order-management\\..*)$' '^(orders\\.events.*|order-management\\..*)$'
+user order-approval "$ORDER_APPROVAL_RABBITMQ_PASSWORD" \
+  '^(orders\\.events.*|order-approval\\..*)$' '^(orders\\.events.*|order-approval\\..*)$' '^(orders\\.events.*|order-approval\\..*)$'
 # notification only consumes: it may bind its queues (read on the exchanges) and declare them with the
 # dead-letter exchange (RabbitMQ requires write on the DLX for that), but never publish to orders.events.
 user notification "$NOTIFICATION_RABBITMQ_PASSWORD" \

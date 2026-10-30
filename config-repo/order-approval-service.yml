@@ -1,0 +1,56 @@
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/order_approval?connectionTimeZone=UTC
+    username: order_approval
+    password: ${ORDER_APPROVAL_DB_PASSWORD}
+  rabbitmq:
+    username: order-approval
+    password: ${ORDER_APPROVAL_RABBITMQ_PASSWORD}
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          audiences: order-approval-api
+      client:
+        registration:
+          fulfilment:
+            client-id: order-approval
+            client-secret: ${ORDER_APPROVAL_CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+            scope: fulfilment:submit
+        provider:
+          fulfilment:
+            token-uri: ${keycloak.internal-url:http://localhost:8180}/realms/melita/protocol/openid-connect/token
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,refresh
+
+# Products and packages that need an agent's approval. Change, commit, then POST /actuator/refresh.
+approval:
+  required-packages: [MOBILE_POSTPAID, INTERNET_1GBPS]
+  required-products: []
+
+fulfilment:
+  base-url: http://localhost:8084
+  connect-timeout: 2s
+  read-timeout: 5s
+  max-attempts: 5
+  initial-retry-delay: 10s
+  max-retry-delay: 5m
+  circuit-open-duration: 30s
+
+orders:
+  zone: Europe/Malta
+
+pii:
+  encryption-key: ${PII_ENCRYPTION_KEY}

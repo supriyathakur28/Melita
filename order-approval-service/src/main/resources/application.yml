@@ -1,0 +1,11 @@
+# Everything else comes from the Config Server (config-repo/order-approval-service*.yml).
+spring:
+  application:
+    name: order-approval-service
+  config:
+    import: "configserver:${CONFIG_SERVER_URL:http://localhost:8888}"
+  cloud:
+    config:
+      username: ${CONFIG_SERVER_USER:config}
+      password: ${CONFIG_SERVER_PASSWORD}
+      fail-fast: true

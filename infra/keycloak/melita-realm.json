@@ -210,12 +210,12 @@
       "optionalClientScopes": []
     },
     {
-      "clientId": "order-management",
-      "name": "order-management-service (calls Fulfilment)",
+      "clientId": "order-approval",
+      "name": "order-approval-service (calls Fulfilment)",
       "enabled": true,
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "order-management-local-secret",
+      "secret": "order-approval-local-secret",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -250,11 +250,11 @@
       "protocol": "openid-connect",
       "protocolMappers": [
         {
-          "name": "audience-order-management",
+          "name": "audience-order-approval",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.custom.audience": "order-management-api",
+            "included.custom.audience": "order-approval-api",
             "access.token.claim": "true",
             "id.token.claim": "false",
             "introspection.token.claim": "true"

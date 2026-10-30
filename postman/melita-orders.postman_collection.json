@@ -665,7 +665,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/orders/{{orderId}}",
+            "url": "{{approvalUrl}}/api/v1/orders/{{orderId}}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -796,7 +796,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}",
+            "url": "{{approvalUrl}}/api/v1/orders/{{heldOrderId}}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -835,7 +835,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/orders",
+            "url": "{{approvalUrl}}/api/v1/orders",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -864,7 +864,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/orders?status=PENDING_APPROVAL&size=100&sort=receivedAt,desc",
+            "url": "{{approvalUrl}}/api/v1/orders?status=PENDING_APPROVAL&size=100&sort=receivedAt,desc",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -895,7 +895,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}",
+            "url": "{{approvalUrl}}/api/v1/orders/{{heldOrderId}}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -966,7 +966,7 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}/approve",
+            "url": "{{approvalUrl}}/api/v1/orders/{{heldOrderId}}/approve",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1005,7 +1005,7 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}/reject",
+            "url": "{{approvalUrl}}/api/v1/orders/{{heldOrderId}}/reject",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1039,7 +1039,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/orders/{{heldOrderId}}",
+            "url": "{{approvalUrl}}/api/v1/orders/{{heldOrderId}}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1137,7 +1137,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/orders/{{rejectOrderId}}",
+            "url": "{{approvalUrl}}/api/v1/orders/{{rejectOrderId}}",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1181,7 +1181,7 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{managementUrl}}/api/v1/orders/{{rejectOrderId}}/reject",
+            "url": "{{approvalUrl}}/api/v1/orders/{{rejectOrderId}}/reject",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1219,7 +1219,7 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{managementUrl}}/api/v1/orders/{{rejectOrderId}}/reject",
+            "url": "{{approvalUrl}}/api/v1/orders/{{rejectOrderId}}/reject",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1259,7 +1259,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/approval-policy",
+            "url": "{{approvalUrl}}/api/v1/approval-policy",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1288,7 +1288,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{managementUrl}}/api/v1/approval-policy",
+            "url": "{{approvalUrl}}/api/v1/approval-policy",
             "auth": {
               "type": "bearer",
               "bearer": [
