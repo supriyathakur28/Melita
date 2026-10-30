@@ -1,7 +1,7 @@
 package com.melita.orders.management.config;
 
 import com.melita.orders.events.OrderEvents;
-import com.melita.orders.management.pii.PiiCipher;
+import com.melita.orders.platform.pii.PiiCipher;
 import com.melita.orders.platform.messaging.MessagingSupportConfiguration;
 import com.melita.orders.platform.messaging.OutboxRelay;
 import com.melita.orders.platform.messaging.Queues;

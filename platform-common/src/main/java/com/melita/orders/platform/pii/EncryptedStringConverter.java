@@ -1,10 +1,11 @@
-package com.melita.orders.management.pii;
+package com.melita.orders.platform.pii;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 
 /**
- * Encrypts a column transparently. Hibernate obtains converters from Spring (Spring Boot registers Spring as
+ * Encrypts a column transparently (use with {@code @Convert}). The service declares a {@link PiiCipher} bean
+ * with its own key. Hibernate obtains converters from Spring (Spring Boot registers Spring as
  * Hibernate's bean container), so the cipher is injected.
  */
 @Converter

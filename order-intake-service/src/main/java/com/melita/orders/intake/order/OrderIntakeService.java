@@ -6,6 +6,7 @@ import com.melita.orders.intake.catalogue.Catalogue;
 import com.melita.orders.intake.catalogue.CatalogueService;
 import com.melita.orders.intake.order.api.OrderReceipt;
 import com.melita.orders.intake.order.api.PlaceOrderRequest;
+import com.melita.orders.platform.idempotency.RequestHasher;
 import com.melita.orders.platform.messaging.OutboxWriter;
 import com.melita.orders.platform.web.ApiException;
 import com.melita.orders.platform.web.FieldViolation;

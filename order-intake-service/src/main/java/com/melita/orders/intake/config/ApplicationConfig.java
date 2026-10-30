@@ -1,5 +1,6 @@
 package com.melita.orders.intake.config;
 
+import com.melita.orders.platform.idempotency.RequestHasher;
 import com.melita.orders.platform.messaging.MessagingSupportConfiguration;
 import com.melita.orders.platform.messaging.OutboxRelay;
 import com.melita.orders.platform.messaging.Queues;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Clock;
 
@@ -28,6 +30,11 @@ class ApplicationConfig {
     @Bean
     JsonMapperBuilderCustomizer strictJson() {
         return builder -> builder.enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    }
+
+    @Bean
+    RequestHasher requestHasher(JsonMapper jsonMapper) {
+        return new RequestHasher(jsonMapper);
     }
 
     /** order-intake only publishes; it declares the exchange and nothing else. */

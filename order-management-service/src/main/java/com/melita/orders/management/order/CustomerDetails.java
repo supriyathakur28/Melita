@@ -1,6 +1,6 @@
 package com.melita.orders.management.order;
 
-import com.melita.orders.management.pii.EncryptedStringConverter;
+import com.melita.orders.platform.pii.EncryptedStringConverter;
 import com.melita.orders.platform.pii.Masking;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;

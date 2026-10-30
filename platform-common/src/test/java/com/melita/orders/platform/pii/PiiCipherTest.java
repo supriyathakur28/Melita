@@ -1,4 +1,4 @@
-package com.melita.orders.management.pii;
+package com.melita.orders.platform.pii;
 
 import org.junit.jupiter.api.Test;
 
