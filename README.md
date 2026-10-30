@@ -153,6 +153,10 @@ Docker must be running: the integration tests start MySQL, RabbitMQ, Redis and M
 | Integration (Testcontainers) | Order → outbox → RabbitMQ; **parallel requests with one Idempotency-Key create one order**; replay/422/409; **duplicate delivery**; **two agents deciding at once (one 200, one 409)**; poison messages → DLQ; Fulfilment retry with the same key, permanent failure, retry exhaustion (against a scripted test fake); fulfilment-service durable idempotency and both 409 cases; encryption at rest; policy refresh; Redis down → catalogue from MySQL; SMTP down → retried, dead-lettered, marked FAILED |
 | Postman + Newman | The running stack end to end with real Keycloak tokens |
 
+**Coding conventions** are checked by Checkstyle (`checkstyle.xml`) at the start of every module's build,
+for main and test code. The build fails if a local variable or a method or constructor parameter is not
+`final`, or if a declaration names more than one variable.
+
 CI (`.github/workflows/ci.yml`) runs `./mvnw verify`. A second job then brings up the full stack and runs
 the Postman collection.
 
@@ -307,6 +311,12 @@ I work day to day.
   in its API and kept idempotency in memory: test hooks belong in test fakes, not in a service's API, and
   idempotency must survive a restart. Following the brief's wording, I restructured the services into
   intake, order-approval, fulfilment and care, with Fulfilment as a real service with its own database.
+  I also asked for:
+  - a required `Idempotency-Key` header validated by a constraint, instead of an optional header checked by
+    hand;
+  - `final` locals and parameters, enforced in the build;
+  - business rules and loops written as streams;
+  - an annotation (`@CurrentAgent`) in place of a static helper class.
 - **Implementation.** The assistant wrote most of the code, tests and documentation from the agreed
   design, in small commits, each with its tests. Several defects were caught by those tests before they
   were committed, for example:
