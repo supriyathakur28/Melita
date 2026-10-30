@@ -89,6 +89,15 @@ class AgentOrderApiWebTest {
     }
 
     @Test
+    void agentFallsBackToTheTokenSubject() throws Exception {
+        mvc.perform(post("/api/v1/orders/" + ORDER_ID + "/approve")
+                        .with(jwt().jwt(j -> j.subject("f3a1-agent-id")).authorities(new SimpleGrantedAuthority("ROLE_AGENT"))))
+                .andExpect(status().isOk());
+
+        verify(service).approve(eq(ORDER_ID), eq("f3a1-agent-id"), isNull());
+    }
+
+    @Test
     void rejectionNeedsAMeaningfulReason() throws Exception {
         mvc.perform(post("/api/v1/orders/" + ORDER_ID + "/reject").with(user("agent1", "AGENT"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"no\"}"))

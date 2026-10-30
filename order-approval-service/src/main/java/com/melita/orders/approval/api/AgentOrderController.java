@@ -9,8 +9,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PagedModel;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -58,14 +56,14 @@ class AgentOrderController {
     @PostMapping("/{orderId}/approve")
     OrderViews.Detail approve(@PathVariable UUID orderId,
                               @Valid @RequestBody(required = false) DecisionRequests.Approve request,
-                              @AuthenticationPrincipal Jwt jwt) {
-        return service.approve(orderId, Agents.name(jwt), request == null ? null : request.comment());
+                              @CurrentAgent String agent) {
+        return service.approve(orderId, agent, request == null ? null : request.comment());
     }
 
     @Operation(summary = "Reject an order that is waiting for approval; a reason is required")
     @PostMapping("/{orderId}/reject")
     OrderViews.Detail reject(@PathVariable UUID orderId, @Valid @RequestBody DecisionRequests.Reject request,
-                             @AuthenticationPrincipal Jwt jwt) {
-        return service.reject(orderId, Agents.name(jwt), request.reason());
+                             @CurrentAgent String agent) {
+        return service.reject(orderId, agent, request.reason());
     }
 }
