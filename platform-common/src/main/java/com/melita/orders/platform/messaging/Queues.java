@@ -1,6 +1,7 @@
 package com.melita.orders.platform.messaging;
 
 import com.melita.orders.events.OrderEvents;
+import lombok.experimental.UtilityClass;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Declarable;
 import org.springframework.amqp.core.Declarables;
@@ -14,10 +15,8 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /** Declarations shared by producers and consumers. Declaring is idempotent, so start-up order does not matter. */
-public final class Queues {
-
-    private Queues() {
-    }
+@UtilityClass
+public class Queues {
 
     public static TopicExchange eventsExchange() {
         return ExchangeBuilder.topicExchange(OrderEvents.EXCHANGE).durable(true).build();

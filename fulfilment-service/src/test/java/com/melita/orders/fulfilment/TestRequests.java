@@ -1,15 +1,14 @@
 package com.melita.orders.fulfilment;
 
 import com.melita.orders.fulfilment.api.FulfilmentOrderRequest;
+import lombok.experimental.UtilityClass;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-public final class TestRequests {
-
-    private TestRequests() {
-    }
+@UtilityClass
+public class TestRequests {
 
     public static FulfilmentOrderRequest request(final UUID orderId) {
         final var address = new FulfilmentOrderRequest.Address("12, Triq il-Kbira", null, "Mosta", "MST 1234");

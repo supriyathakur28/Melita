@@ -1,6 +1,7 @@
 package com.melita.orders.approval;
 
 import com.melita.orders.events.OrderAccepted;
+import lombok.experimental.UtilityClass;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -8,10 +9,8 @@ import java.util.List;
 import java.util.UUID;
 
 /** order.accepted payloads for tests. */
-public final class TestOrderEvents {
-
-    private TestOrderEvents() {
-    }
+@UtilityClass
+public class TestOrderEvents {
 
     public static OrderAccepted.Address address() {
         return new OrderAccepted.Address("12, Triq il-Kbira", null, "Mosta", "MST 1234");

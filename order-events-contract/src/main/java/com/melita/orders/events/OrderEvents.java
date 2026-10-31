@@ -1,11 +1,14 @@
 package com.melita.orders.events;
 
+import lombok.experimental.UtilityClass;
+
 import java.util.List;
 
 /**
  * Exchange and routing keys. The routing key of an event is always its {@code eventType}.
  */
-public final class OrderEvents {
+@UtilityClass
+public class OrderEvents {
 
     public static final String EXCHANGE = "orders.events";
     public static final String DEAD_LETTER_EXCHANGE = "orders.events.dlx";
@@ -23,7 +26,4 @@ public final class OrderEvents {
 
     /** AMQP header carrying the request ID of the call that caused the event. */
     public static final String CORRELATION_HEADER = "x-correlation-id";
-
-    private OrderEvents() {
-    }
 }

@@ -9,6 +9,7 @@ import com.melita.orders.intake.order.api.PlaceOrderRequest.InstallationRequest;
 import com.melita.orders.intake.order.api.PlaceOrderRequest.ItemRequest;
 import com.melita.orders.intake.order.api.PlaceOrderRequest.Product;
 import com.melita.orders.intake.order.api.PlaceOrderRequest.TimeSlot;
+import lombok.experimental.UtilityClass;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -17,10 +18,8 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 /** Test data for order requests. */
-public final class TestOrders {
-
-    private TestOrders() {
-    }
+@UtilityClass
+public class TestOrders {
 
     public static AddressRequest address() {
         return new AddressRequest("12, Triq il-Kbira", null, "Mosta", "MST 1234");

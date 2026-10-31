@@ -3,15 +3,14 @@ package com.melita.orders.intake.order;
 import com.melita.orders.events.OrderAccepted;
 import com.melita.orders.intake.catalogue.Catalogue;
 import com.melita.orders.intake.order.api.PlaceOrderRequest;
+import lombok.experimental.UtilityClass;
 
 import java.time.Instant;
 import java.util.UUID;
 
 /** Translates the public request into the event contract (Message Translator at the edge). */
-final class OrderAcceptedMapper {
-
-    private OrderAcceptedMapper() {
-    }
+@UtilityClass
+class OrderAcceptedMapper {
 
     static OrderAccepted toEvent(final UUID orderId, final String partnerId, final PlaceOrderRequest request,
                                  final Catalogue catalogue, final Instant acceptedAt) {

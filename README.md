@@ -156,6 +156,9 @@ Docker must be running: the integration tests start MySQL, RabbitMQ, Redis and M
 **Coding conventions** are checked by Checkstyle (`checkstyle.xml`) at the start of every module's build,
 for main and test code. The build fails if a local variable or a method or constructor parameter is not
 `final`, or if a declaration names more than one variable.
+Classes that only hold constants or static helpers are marked with Lombok's `@UtilityClass` instead of a
+hand-written private constructor; their members keep an explicit `static` so `import static` still
+works. Lombok is compile-time only and is left out of the service jars.
 
 CI (`.github/workflows/ci.yml`) runs `./mvnw verify`. A second job then brings up the full stack and runs
 the Postman collection.

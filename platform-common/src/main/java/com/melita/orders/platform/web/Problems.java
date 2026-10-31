@@ -1,5 +1,6 @@
 package com.melita.orders.platform.web;
 
+import lombok.experimental.UtilityClass;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 
@@ -8,12 +9,10 @@ import java.util.List;
 import java.util.Locale;
 
 /** Builds RFC 9457 problem details with the properties every response of this platform carries. */
-public final class Problems {
+@UtilityClass
+public class Problems {
 
     private static final String TYPE_BASE = "https://api.melita.example/problems/";
-
-    private Problems() {
-    }
 
     public static ProblemDetail of(final HttpStatusCode status, final String code, final String title,
                                    final String detail) {
