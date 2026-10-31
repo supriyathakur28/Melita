@@ -3,7 +3,6 @@ package com.melita.orders.care;
 import com.melita.orders.events.EventEnvelope;
 import com.melita.orders.events.OrderAccepted;
 import com.melita.orders.events.OrderEvents;
-import com.melita.orders.platform.messaging.PoisonMessageException;
 import org.junit.jupiter.api.Test;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver;
@@ -16,7 +15,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EmailComposerTest {
 
@@ -60,9 +58,4 @@ class EmailComposerTest {
         assertThat(composer.compose(OrderEvents.ORDER_SUBMITTED, "{}".getBytes(StandardCharsets.UTF_8))).isEmpty();
     }
 
-    @Test
-    void unreadablePayloadIsPoison() {
-        assertThatThrownBy(() -> composer.compose(OrderEvents.ORDER_ACCEPTED, "nope".getBytes(StandardCharsets.UTF_8)))
-                .isInstanceOf(PoisonMessageException.class);
-    }
 }

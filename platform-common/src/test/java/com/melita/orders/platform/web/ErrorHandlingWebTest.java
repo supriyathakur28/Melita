@@ -50,13 +50,6 @@ class ErrorHandlingWebTest {
     }
 
     @Test
-    void requestIdIsGeneratedWhenAbsent() throws Exception {
-        mvc.perform(get("/test/ok").with(jwt()))
-                .andExpect(status().isOk())
-                .andExpect(header().exists(RequestIds.HEADER));
-    }
-
-    @Test
     void notFoundIs404Problem() throws Exception {
         mvc.perform(get("/test/not-found").with(jwt()))
                 .andExpect(status().isNotFound())

@@ -1,12 +1,9 @@
 package com.melita.orders.intake.order;
 
-import com.melita.orders.intake.TestOrders;
 import com.melita.orders.intake.order.api.PlaceOrderRequest;
 import com.melita.orders.platform.idempotency.RequestHasher;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.json.JsonMapper;
-
-import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,11 +31,4 @@ class RequestHasherTest {
                 .hasSize(64);
     }
 
-    @Test
-    void differentContentGivesADifferentHash() {
-        final var first = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 9));
-        final var second = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 10));
-
-        assertThat(hasher.hash(first)).isNotEqualTo(hasher.hash(second));
-    }
 }

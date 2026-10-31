@@ -136,15 +136,6 @@ class MessagingSupportIT {
     }
 
     @Test
-    void inboxAcceptsAMessageIdOnlyOnce() {
-        final Boolean first = tx.execute(status -> inboxGuard.firstDelivery("message-1"));
-        final Boolean second = tx.execute(status -> inboxGuard.firstDelivery("message-1"));
-
-        assertThat(first).isTrue();
-        assertThat(second).isFalse();
-    }
-
-    @Test
     void poisonMessageGoesStraightToTheDeadLetterQueue() {
         send("poison", "req-poison");
 

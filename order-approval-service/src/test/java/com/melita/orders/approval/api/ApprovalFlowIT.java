@@ -111,10 +111,15 @@ class ApprovalFlowIT extends ApprovalIntegrationTest {
         assertThat(FULFILMENT.receivedFor(orderId.toString()).getFirst().body()).contains("\"preferredSlotExpired\":true");
     }
 
-    /** Repeated: the race is timing-dependent; it once exposed a MySQL deadlock (fixed with a row lock). */
-    @org.junit.jupiter.api.RepeatedTest(10)
-    void twoAgentsDecidingAtOnceGetOneWinnerAndOne409() throws Exception {
-        final UUID orderId = heldOrder(null);
+    /** Ten races: the outcome is timing-dependent; it once exposed a MySQL deadlock (fixed with a row lock). */
+    @Test
+    void twoAgentsDecidingAtOnceGetOneWinnerAndOne409() {
+        for (int race = 0; race < 10; race++) {
+            decideConcurrently(heldOrder(null));
+        }
+    }
+
+    private void decideConcurrently(final UUID orderId) {
         final CountDownLatch start = new CountDownLatch(1);
 
         final CompletableFuture<MvcResult> approve = CompletableFuture.supplyAsync(() -> decide(start,

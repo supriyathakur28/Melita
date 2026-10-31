@@ -24,10 +24,4 @@ class ApprovalPolicyTest {
                 .containsExactly("PACKAGE:MOBILE_POSTPAID", "PRODUCT:TV");
     }
 
-    @Test
-    void noRulesMeansNoApproval() {
-        final var policy = new ApprovalPolicy(new MockEnvironment());
-
-        assertThat(policy.reasonsFor(List.of(TestOrderEvents.item("MOBILE", "MOBILE_POSTPAID")))).isEmpty();
-    }
 }

@@ -74,15 +74,6 @@ class FulfilmentApiWebTest {
     }
 
     @Test
-    void replayIs200() throws Exception {
-        when(service.submit(any(), any())).thenReturn(new SubmissionResult(RESPONSE, true));
-
-        mvc.perform(submit(body()).with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_fulfilment:submit"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fulfilmentReference").value("FUL-0123456789"));
-    }
-
-    @Test
     void idempotencyKeyIsRequired() throws Exception {
         mvc.perform(post("/api/v1/fulfilment-orders").with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_fulfilment:submit")))
                         .contentType(MediaType.APPLICATION_JSON).content(body()))

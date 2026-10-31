@@ -25,59 +25,9 @@ class CustomerOrderTest {
     }
 
     @Test
-    void orderNeedingApprovalIsHeld() {
-        final CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
-
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING_APPROVAL);
-        assertThat(order.getNextAttemptAt()).isNull();
-        assertThat(order.getHistory()).singleElement()
-                .satisfies(h -> assertThat(h.getReason()).contains("PACKAGE:MOBILE_POSTPAID"));
-    }
-
-    @Test
-    void orderWithoutApprovalIsReadyImmediately() {
-        final CustomerOrder order = order(List.of());
-
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.READY_FOR_FULFILMENT);
-        assertThat(order.getNextAttemptAt()).isEqualTo(NOW);
-    }
-
-    @Test
-    void approvalRecordsTheAgentAndMakesTheOrderReady() {
-        final CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
-
-        order.approve("agent1", "checked ID", NOW.plusSeconds(60));
-
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.READY_FOR_FULFILMENT);
-        assertThat(order.getDecidedBy()).isEqualTo("agent1");
-        assertThat(order.getHistory()).extracting(StatusChange::getActor).containsExactly("system", "agent1");
-    }
-
-    @Test
-    void aDecidedOrderCannotBeDecidedAgain() {
-        final CustomerOrder order = order(List.of("PACKAGE:MOBILE_POSTPAID"));
-        order.reject("agent1", "failed the credit check", NOW);
-
-        assertThatThrownBy(() -> order.approve("agent2", null, NOW))
-                .isInstanceOf(InvalidTransitionException.class)
-                .hasMessageContaining("REJECTED");
-    }
-
-    @Test
     void anOrderThatNeedsNoApprovalCannotBeApproved() {
         assertThatThrownBy(() -> order(List.of()).approve("agent1", null, NOW))
                 .isInstanceOf(InvalidTransitionException.class);
-    }
-
-    @Test
-    void temporaryFulfilmentFailureKeepsTheOrderReadyWithALaterAttempt() {
-        final CustomerOrder order = order(List.of());
-
-        order.recordFailedAttempt("HTTP 503", NOW.plusSeconds(10), NOW);
-
-        assertThat(order.getStatus()).isEqualTo(OrderStatus.READY_FOR_FULFILMENT);
-        assertThat(order.getAttempts()).isEqualTo(1);
-        assertThat(order.getNextAttemptAt()).isEqualTo(NOW.plusSeconds(10));
     }
 
     @Test

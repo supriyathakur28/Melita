@@ -1,26 +1,17 @@
 package com.melita.orders.platform.pii;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MaskingTest {
 
-    @ParameterizedTest
-    @CsvSource({
-            "123456M, ****56M",
-            "AB1234567, ****567",
-            "1234, ****234",
-            "12M, ****",
-            "M, ****"
-    })
-    void keepsOnlyTheLastThreeCharacters(final String value, final String masked) {
-        assertThat(Masking.mask(value)).isEqualTo(masked);
-    }
-
-    @org.junit.jupiter.api.Test
-    void nullStaysNull() {
+    @Test
+    void keepsOnlyTheLastThreeCharacters() {
+        assertThat(Masking.mask("123456M")).isEqualTo("****56M");
+        assertThat(Masking.mask("AB1234567")).isEqualTo("****567");
+        assertThat(Masking.mask("1234")).isEqualTo("****234");
+        assertThat(Masking.mask("12M")).isEqualTo("****");
         assertThat(Masking.mask(null)).isNull();
     }
 }

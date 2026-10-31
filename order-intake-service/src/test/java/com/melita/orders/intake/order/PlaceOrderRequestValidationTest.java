@@ -14,8 +14,6 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -41,34 +39,27 @@ class PlaceOrderRequestValidationTest {
     }
 
     @Test
-    void validRequestPasses() {
-        assertThat(invalidFields(TestOrders.internetAndMobile("ERP-2026_01.x", LocalDate.of(2026, 11, 9)))).isEmpty();
-    }
-
-    @Test
     void maltesePostcodeIsRequired() {
         assertThat(invalidFields(new AddressRequest("1 Main St", null, "Mosta", "MST1234"))).isEmpty();
         assertThat(invalidFields(new AddressRequest("1 Main St", null, "Mosta", "12345"))).containsExactly("postcode");
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"Ċensu", "Ġorġ", "Ħelena", "Żaren", "Mary-Anne", "D'Amato"})
-    void namesAcceptMalteseLettersApostrophesAndHyphens(final String name) {
-        assertThat(invalidFields(customer(name, "+35679123456", TestOrders.customer().identityDocument()))).isEmpty();
+    @Test
+    void namesAcceptMalteseLettersApostrophesAndHyphensButNotDigitsOrMarkup() {
+        final var document = TestOrders.customer().identityDocument();
+        assertThat(List.of("Ċensu", "Ġorġ", "Ħelena", "Żaren", "Mary-Anne", "D'Amato"))
+                .allSatisfy(name -> assertThat(invalidFields(customer(name, "+35679123456", document))).isEmpty());
+        assertThat(List.of("Maria1", "<script>", " Maria"))
+                .allSatisfy(name -> assertThat(invalidFields(customer(name, "+35679123456", document)))
+                        .containsExactly("firstName"));
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"Maria1", "<script>", " Maria"})
-    void namesRejectDigitsAndMarkup(final String name) {
-        assertThat(invalidFields(customer(name, "+35679123456", TestOrders.customer().identityDocument())))
-                .containsExactly("firstName");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"79123456", "+0035679123456", "+356 7912 3456"})
-    void mobileMustBeE164(final String mobile) {
-        assertThat(invalidFields(customer("Maria", mobile, TestOrders.customer().identityDocument())))
-                .containsExactly("mobileNumber");
+    @Test
+    void mobileMustBeE164() {
+        final var document = TestOrders.customer().identityDocument();
+        assertThat(List.of("79123456", "+0035679123456", "+356 7912 3456"))
+                .allSatisfy(mobile -> assertThat(invalidFields(customer("Maria", mobile, document)))
+                        .containsExactly("mobileNumber"));
     }
 
     @Test

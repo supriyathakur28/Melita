@@ -724,7 +724,7 @@ catalogue is read from MySQL.
 
 | Level | Proves |
 |---|---|
-| **Unit** (JUnit 5, fixed `Clock`) | Every validation and business rule, including dates around the lead-time and age boundaries; every state transition, valid and invalid; approval policy matching; request-hash canonicalisation; ID-number encryption and masking |
+| **Unit** (JUnit 5, fixed `Clock`) | Every validation and business rule, including dates around the lead-time and age boundaries; the order transitions no integration flow reaches; approval policy matching; request-hash canonicalisation; ID-number encryption and masking |
 | **Web slice** (`@WebMvcTest` + `jwt()`) | Error responses (400/422 shapes); the security matrix: 401/403 per endpoint, scope and role, and 404 for another partner's order |
 | **Integration** (`@SpringBootTest` + Testcontainers MySQL, RabbitMQ, Redis, Mailpit) | Order → outbox → RabbitMQ; **parallel duplicate Idempotency-Key**; replay, 422 and 409 cases; **duplicate event delivery**; **concurrent approve vs reject**; poison message → DLQ; email content via Mailpit; Redis down → catalogue from DB. In order-approval, Fulfilment is replaced by a scripted test fake (`FakeFulfilment`, a small HTTP server) to prove 201, 5xx-then-201, 4xx, unreadable body and retry exhaustion. In fulfilment-service: persistence with the ID number encrypted, replay, both 409 cases, parallel submissions with one key |
 | **Postman + Newman** (against `docker compose up`) | Real Keycloak tokens; happy path to `SUBMITTED` **and the final order present in fulfilment-service**; validation and auth failures (including wrong audience per API); idempotent replay; approval and rejection; email received |

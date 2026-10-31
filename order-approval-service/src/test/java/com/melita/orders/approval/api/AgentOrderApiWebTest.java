@@ -2,13 +2,10 @@ package com.melita.orders.approval.api;
 
 import com.melita.orders.approval.policy.ApprovalPolicy;
 import com.melita.orders.approval.config.SecurityConfig;
-import com.melita.orders.approval.order.InvalidTransitionException;
-import com.melita.orders.approval.order.OrderStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
@@ -18,7 +15,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.Set;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -65,27 +61,10 @@ class AgentOrderApiWebTest {
     }
 
     @Test
-    void agentsCanListOrdersByStatus() throws Exception {
-        when(service.list(eq(OrderStatus.PENDING_APPROVAL), any())).thenReturn(Page.empty());
-
-        mvc.perform(get("/api/v1/orders").param("status", "PENDING_APPROVAL").with(user("agent1", "AGENT")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page.totalElements").value(0));
-    }
-
-    @Test
     void sortingIsRestrictedToAnAllowList() throws Exception {
         mvc.perform(get("/api/v1/orders").param("sort", "customer.email").with(user("agent1", "AGENT")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_SORT"));
-    }
-
-    @Test
-    void approvalUsesTheAgentFromTheToken() throws Exception {
-        mvc.perform(post("/api/v1/orders/" + ORDER_ID + "/approve").with(user("agent1", "AGENT")))
-                .andExpect(status().isOk());
-
-        verify(service).approve(eq(ORDER_ID), eq("agent1"), isNull());
     }
 
     @Test
@@ -104,16 +83,6 @@ class AgentOrderApiWebTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("reason"));
         verifyNoInteractions(service);
-    }
-
-    @Test
-    void decidingAnAlreadyDecidedOrderIs409() throws Exception {
-        when(service.approve(any(), any(), any()))
-                .thenThrow(new InvalidTransitionException(OrderStatus.REJECTED, OrderStatus.READY_FOR_FULFILMENT));
-
-        mvc.perform(post("/api/v1/orders/" + ORDER_ID + "/approve").with(user("agent1", "AGENT")))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("INVALID_STATE_TRANSITION"));
     }
 
     @Test

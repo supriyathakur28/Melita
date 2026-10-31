@@ -133,16 +133,6 @@ class OrderApiWebTest {
     }
 
     @Test
-    void replayIsMarked() throws Exception {
-        when(service.place(any(), any(), any())).thenReturn(new PlacementResult(RECEIPT, true));
-
-        mvc.perform(post("/api/v1/orders").with(partner("orders:write")).header("Idempotency-Key", "key-00000001")
-                        .contentType(MediaType.APPLICATION_JSON).content(validBody()))
-                .andExpect(status().isCreated())
-                .andExpect(header().string("Idempotent-Replayed", "true"));
-    }
-
-    @Test
     void readingAnOrderNeedsTheReadScope() throws Exception {
         mvc.perform(get("/api/v1/orders/" + ORDER_ID).with(partner("orders:write")))
                 .andExpect(status().isForbidden());

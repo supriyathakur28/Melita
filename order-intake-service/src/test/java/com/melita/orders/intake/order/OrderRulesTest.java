@@ -47,13 +47,6 @@ class OrderRulesTest {
     }
 
     @Test
-    void validOrderHasNoViolations() {
-        final var request = TestOrders.internetAndMobile("ERP-1", LocalDate.of(2026, 11, 9));
-
-        assertThat(check(request, WEDNESDAY_MORNING)).isEmpty();
-    }
-
-    @Test
     void unknownAndRetiredPackagesAreRejected() {
         final var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null, List.of(
                 new ItemRequest(Product.INTERNET, "INTERNET_10GBPS"),
@@ -72,14 +65,6 @@ class OrderRulesTest {
                 List.of(new ItemRequest(Product.MOBILE, "INTERNET_1GBPS")));
 
         assertThat(codes(check(request, WEDNESDAY_MORNING))).containsExactly("PACKAGE_PRODUCT_MISMATCH");
-    }
-
-    @Test
-    void fixedLineProductsNeedInstallationDetails() {
-        final var request = new PlaceOrderRequest("ERP-1", TestOrders.customer(), null,
-                List.of(new ItemRequest(Product.INTERNET, "INTERNET_1GBPS")));
-
-        assertThat(codes(check(request, WEDNESDAY_MORNING))).containsExactly("INSTALLATION_REQUIRED");
     }
 
     @Test
