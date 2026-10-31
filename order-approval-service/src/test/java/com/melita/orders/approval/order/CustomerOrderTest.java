@@ -18,7 +18,7 @@ class CustomerOrderTest {
     private static CustomerOrder order(final List<String> approvalReasons) {
         final var customer = new CustomerDetails("Maria", "Borg", LocalDate.of(1990, 4, 12), "maria@example.com",
                 "+35679123456", "ID_CARD", "123456M", ADDRESS);
-        return CustomerOrder.receive(UUID.randomUUID(), "erp-partner", "ERP-1", customer,
+        return CustomerOrder.receive(UUID.randomUUID(), "erp-partner", "ERP-1", "req-1", customer,
                 new Installation(LocalDate.of(2026, 11, 9), "MORNING", ADDRESS),
                 List.of(new CustomerOrder.NewItem("MOBILE", "MOBILE_POSTPAID", "Mobile post-paid")),
                 approvalReasons, NOW);

@@ -49,11 +49,11 @@ public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, UU
 
     /** Uses the (status, next_attempt_at) index. */
     @Query("""
-            select o.id from CustomerOrder o
+            select new com.melita.orders.approval.order.DueOrder(o.id, o.correlationId) from CustomerOrder o
             where o.status = com.melita.orders.approval.order.OrderStatus.READY_FOR_FULFILMENT
               and o.nextAttemptAt <= :now
             order by o.nextAttemptAt
             limit 20
             """)
-    List<UUID> findDueForSubmission(Instant now);
+    List<DueOrder> findDueForSubmission(Instant now);
 }

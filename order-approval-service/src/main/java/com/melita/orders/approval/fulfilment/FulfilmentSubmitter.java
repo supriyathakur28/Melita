@@ -6,8 +6,10 @@ import com.melita.orders.events.OrderFulfilmentFailed;
 import com.melita.orders.events.OrderSubmitted;
 import com.melita.orders.approval.order.CustomerOrder;
 import com.melita.orders.approval.order.CustomerOrderRepository;
+import com.melita.orders.approval.order.DueOrder;
 import com.melita.orders.platform.messaging.NamedLock;
 import com.melita.orders.platform.messaging.OutboxWriter;
+import com.melita.orders.platform.web.RequestIds;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -68,8 +70,10 @@ public class FulfilmentSubmitter {
     }
 
     void submitDueOrders() {
-        final List<UUID> due = readOnly.execute(status -> orders.findDueForSubmission(clock.instant()));
-        due.forEach(this::submitIsolated);
+        final List<DueOrder> due = readOnly.execute(status -> orders.findDueForSubmission(clock.instant()));
+        // Each order is handled under the request ID it was placed with: logs, the call to Fulfilment
+        // (X-Request-Id) and the events below all carry it.
+        due.forEach(order -> RequestIds.runWith(order.correlationId(), () -> submitIsolated(order.id())));
     }
 
     /** One bad order must not block the others. */
@@ -112,7 +116,7 @@ public class FulfilmentSubmitter {
         switch (outcome) {
             case FulfilmentOutcome.Submitted submitted -> {
                 order.markSubmitted(submitted.fulfilmentReference(), now);
-                outbox.append(EventEnvelope.of(OrderEvents.ORDER_SUBMITTED, null, now, new OrderSubmitted(
+                outbox.append(EventEnvelope.of(OrderEvents.ORDER_SUBMITTED, RequestIds.current(), now, new OrderSubmitted(
                         order.getId(), order.getExternalReference(), submitted.fulfilmentReference(), now)));
                 log.info("Order {} submitted to Fulfilment as {}", orderId, submitted.fulfilmentReference());
             }
@@ -132,7 +136,7 @@ public class FulfilmentSubmitter {
 
     private void fail(final CustomerOrder order, final String error, final Instant now) {
         order.markFulfilmentFailed(error, now);
-        outbox.append(EventEnvelope.of(OrderEvents.ORDER_FULFILMENT_FAILED, null, now, new OrderFulfilmentFailed(
+        outbox.append(EventEnvelope.of(OrderEvents.ORDER_FULFILMENT_FAILED, RequestIds.current(), now, new OrderFulfilmentFailed(
                 order.getId(), order.getExternalReference(), order.getAttempts(), error)));
         log.error("Order {} could not be submitted to Fulfilment: {}", order.getId(), error);
     }

@@ -593,7 +593,7 @@ data. (Spring's stock `RejectAndDontRequeueRecoverer` logs the whole message, so
 
 | Table | Key columns and constraints | Indexes |
 |---|---|---|
-| `customer_order` | `id` PK (= intake orderId), `partner_id`, `external_reference`, `status` (CHECK), embedded customer and address, installation (nullable), `preferred_slot_expired` (fixed at the first submission), `id_document_number` (**encrypted**), `approval_reasons` (comma-separated codes), `decided_by`, `decided_at`, `decision_note`, `fulfilment_reference`, `attempts`, `next_attempt_at`, `last_error`, `version`, `received_at`, `updated_at` | `(status, received_at)` for the pending list; `(status, next_attempt_at)` for the submitter |
+| `customer_order` | `id` PK (= intake orderId), `partner_id`, `external_reference`, `correlation_id` (the partner's request ID), `status` (CHECK), embedded customer and address, installation (nullable), `preferred_slot_expired` (fixed at the first submission), `id_document_number` (**encrypted**), `approval_reasons` (comma-separated codes), `decided_by`, `decided_at`, `decision_note`, `fulfilment_reference`, `attempts`, `next_attempt_at`, `last_error`, `version`, `received_at`, `updated_at` | `(status, received_at)` for the pending list; `(status, next_attempt_at)` for the submitter |
 | `order_item` | `id` PK, `order_id` FK, `product_code`, `package_code`, `package_name`; UNIQUE(`order_id`, `product_code`) | FK |
 | `order_status_history` | `id` PK, `order_id` FK, `from_status`, `to_status`, `actor`, `reason`, `occurred_at` | `(order_id, occurred_at)` |
 | `processed_message` | **PK(`message_id`)**, `processed_at` | — |
@@ -713,6 +713,10 @@ catalogue is read from MySQL.
 - JSON structured logs (Spring Boot's ECS format) with `requestId` and `orderId`.
 - `X-Request-Id` is accepted or generated at the edge, returned on the response, carried in events as
   `correlationId`, and put back into the logs by consumers.
+- Background jobs have no incoming request, so they restore the ID from stored data: the outbox relay from
+  each row's `correlation_id`, the Fulfilment submitter from the order's `correlation_id` (the partner's
+  request ID). The submitter's logs, its `X-Request-Id` to Fulfilment and its events all carry it, so one ID
+  follows an order from the partner's call to Fulfilment.
 - Actuator health with liveness and readiness probes (DB and RabbitMQ).
 - One custom metric, `outbox.pending`, the backlog of unpublished events.
 

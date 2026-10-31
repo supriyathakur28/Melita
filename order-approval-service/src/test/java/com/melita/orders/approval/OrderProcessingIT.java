@@ -53,7 +53,7 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
     }
 
     @Test
-    void orderNotNeedingApprovalIsSubmittedToFulfilmentWithTokenAndIdempotencyKey() {
+    void orderNotNeedingApprovalIsSubmittedToFulfilmentWithTokenIdempotencyKeyAndRequestId() {
         final UUID orderId = UUID.randomUUID();
         publishAccepted(TestOrderEvents.accepted(orderId, List.of(
                 TestOrderEvents.item("INTERNET", "INTERNET_250MBPS"), TestOrderEvents.item("MOBILE", "MOBILE_PREPAID")),
@@ -63,9 +63,12 @@ class OrderProcessingIT extends ApprovalIntegrationTest {
         final var calls = FULFILMENT.receivedFor(orderId.toString());
         assertThat(calls).hasSize(1);
         assertThat(calls.getFirst().authorization()).isEqualTo("Bearer test-token");
+        assertThat(calls.getFirst().requestId()).as("the partner's request ID, from order.accepted").isEqualTo("req-it");
         assertThat(calls.getFirst().body()).contains("\"idDocumentNumber\":\"123456M\"", "\"preferredSlotExpired\":false");
         assertThat(orders.findById(orderId).orElseThrow().getFulfilmentReference()).startsWith("FUL-");
         await().atMost(Duration.ofSeconds(10)).until(() -> eventSeen(OrderEvents.ORDER_SUBMITTED, orderId.toString()));
+        assertThat(captured).filteredOn(e -> e.startsWith(OrderEvents.ORDER_SUBMITTED + " ") && e.contains(orderId.toString()))
+                .singleElement().asString().containsPattern("\"correlationId\":\\s*\"req-it\"");
     }
 
     @Test

@@ -53,7 +53,7 @@ public class OrderIngestionService {
         final Instant now = clock.instant().truncatedTo(ChronoUnit.MICROS);
         final List<String> reasons = approvalPolicy.reasonsFor(accepted.items());
         final CustomerOrder order = CustomerOrder.receive(accepted.orderId(), accepted.partnerId(),
-                accepted.externalReference(), customer(accepted.customer()), installation(accepted.installation()),
+                accepted.externalReference(), event.correlationId(), customer(accepted.customer()), installation(accepted.installation()),
                 accepted.items().stream()
                         .map(i -> new CustomerOrder.NewItem(i.product(), i.packageCode(), i.packageName())).toList(),
                 reasons, now);

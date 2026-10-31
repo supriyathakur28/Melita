@@ -20,7 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public final class FakeFulfilment {
 
-    public record Received(String idempotencyKey, String authorization, String body) {
+    public record Received(String idempotencyKey, String authorization, String requestId, String body) {
     }
 
     private final HttpServer server;
@@ -55,7 +55,8 @@ public final class FakeFulfilment {
     private void fulfilment(final HttpExchange exchange) throws IOException {
         final String key = exchange.getRequestHeaders().getFirst("Idempotency-Key");
         final String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-        received.add(new Received(key, exchange.getRequestHeaders().getFirst("Authorization"), body));
+        received.add(new Received(key, exchange.getRequestHeaders().getFirst("Authorization"),
+                exchange.getRequestHeaders().getFirst("X-Request-Id"), body));
         final Queue<Integer> statuses = scripted.get(key);
         final Integer status = statuses == null ? null : statuses.poll();
         if (status != null) {

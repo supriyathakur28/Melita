@@ -48,6 +48,10 @@ public class CustomerOrder implements Persistable<UUID> {
     @Column(name = "external_reference", nullable = false)
     private String externalReference;
 
+    /** The request ID of the partner call that placed the order. */
+    @Column(name = "correlation_id")
+    private String correlationId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
@@ -114,13 +118,14 @@ public class CustomerOrder implements Persistable<UUID> {
 
     /** Creates a received order in its first status: held for approval, or ready for Fulfilment. */
     public static CustomerOrder receive(final UUID id, final String partnerId, final String externalReference,
-                                        final CustomerDetails customer, final Installation installation,
+                                        final String correlationId, final CustomerDetails customer, final Installation installation,
                                         final List<NewItem> items, final List<String> approvalReasons,
                                         final Instant now) {
         final var order = new CustomerOrder();
         order.id = id;
         order.partnerId = partnerId;
         order.externalReference = externalReference;
+        order.correlationId = correlationId;
         order.customer = customer;
         order.installation = installation;
         order.approvalRequired = !approvalReasons.isEmpty();
@@ -224,6 +229,10 @@ public class CustomerOrder implements Persistable<UUID> {
 
     public String getPartnerId() {
         return partnerId;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
     }
 
     public String getExternalReference() {

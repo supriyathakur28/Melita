@@ -1,6 +1,7 @@
 package com.melita.orders.platform.messaging;
 
 import com.melita.orders.events.OrderEvents;
+import com.melita.orders.platform.web.RequestIds;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
@@ -72,7 +73,7 @@ public class OutboxRelay {
         // Send the whole batch first, then wait for the confirms: the broker confirms them in parallel.
         final List<Sent> sent = rows.stream().map(this::send).toList();
         final List<Long> confirmed = sent.stream()
-                .filter(OutboxRelay::isConfirmed)
+                .filter(s -> RequestIds.callWith(s.row().correlationId(), () -> isConfirmed(s)))
                 .map(s -> s.row().id())
                 .toList();
 

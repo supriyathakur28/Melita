@@ -44,7 +44,8 @@ AMQP properties repeat the metadata:
 - `content_type` = `application/json`
 - delivery mode persistent
 - header `x-correlation-id` = `correlationId`, the request ID of the call that caused the event; quote it
-  when reporting a problem.
+  when reporting a problem. `order.submitted` and `order.fulfilment-failed` come from a background job, so
+  they carry the request ID of the partner call that placed the order.
 
 ## Events
 

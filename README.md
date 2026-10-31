@@ -258,7 +258,8 @@ To run a service from the IDE:
   agents.
 - **Failed email.** A row in `notification` with status `FAILED` records an email that could not be sent.
 - **Correlation.** Every response carries `X-Request-Id`. The same ID follows the order through events
-  (`x-correlation-id`) and appears in every service's logs (JSON, ECS format, in Docker).
+  (`x-correlation-id`), the call to Fulfilment (`X-Request-Id`) and every service's logs (JSON, ECS format,
+  in Docker), including the background jobs that publish events and submit orders.
 - **Health.** Each service has `/actuator/health/liveness` and `/readiness`. Readiness depends on the
   database and RabbitMQ only; Redis and SMTP are optional.
 
