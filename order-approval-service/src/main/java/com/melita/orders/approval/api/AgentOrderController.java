@@ -35,7 +35,7 @@ class AgentOrderController {
 
     @Operation(summary = "List orders, e.g. those waiting for approval")
     @GetMapping
-    PagedModel<OrderViews.Summary> list(@RequestParam(required = false) final OrderStatus status,
+    PagedModel<OrderSummary> list(@RequestParam(required = false) final OrderStatus status,
                                         @PageableDefault(size = 20, sort = "receivedAt") final Pageable pageable) {
         final boolean unsortable = pageable.getSort().stream()
                 .map(Sort.Order::getProperty)
@@ -49,22 +49,22 @@ class AgentOrderController {
 
     @Operation(summary = "Order detail with its history; the ID number is masked")
     @GetMapping("/{orderId}")
-    OrderViews.Detail get(@PathVariable final UUID orderId) {
+    OrderDetail get(@PathVariable final UUID orderId) {
         return service.get(orderId);
     }
 
     @Operation(summary = "Approve an order that is waiting for approval")
     @PostMapping("/{orderId}/approve")
-    OrderViews.Detail approve(@PathVariable final UUID orderId,
-                              @Valid @RequestBody(required = false) final DecisionRequests.Approve request,
+    OrderDetail approve(@PathVariable final UUID orderId,
+                              @Valid @RequestBody(required = false) final ApproveRequest request,
                               @CurrentAgent final String agent) {
         return service.approve(orderId, agent, request == null ? null : request.comment());
     }
 
     @Operation(summary = "Reject an order that is waiting for approval; a reason is required")
     @PostMapping("/{orderId}/reject")
-    OrderViews.Detail reject(@PathVariable final UUID orderId,
-                             @Valid @RequestBody final DecisionRequests.Reject request,
+    OrderDetail reject(@PathVariable final UUID orderId,
+                             @Valid @RequestBody final RejectRequest request,
                              @CurrentAgent final String agent) {
         return service.reject(orderId, agent, request.reason());
     }

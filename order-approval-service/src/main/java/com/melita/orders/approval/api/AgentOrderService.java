@@ -53,22 +53,22 @@ public class AgentOrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<OrderViews.Summary> list(final OrderStatus status, final Pageable pageable) {
+    public Page<OrderSummary> list(final OrderStatus status, final Pageable pageable) {
         final Page<OrderSummaryView> page = status == null
                 ? orders.findAllProjectedBy(pageable)
                 : orders.findByStatus(status, pageable);
-        return page.map(v -> new OrderViews.Summary(v.getId(), v.getPartnerId(), v.getExternalReference(),
+        return page.map(v -> new OrderSummary(v.getId(), v.getPartnerId(), v.getExternalReference(),
                 v.getStatus(), v.isApprovalRequired(), v.getReceivedAt()));
     }
 
     @Transactional(readOnly = true)
-    public OrderViews.Detail get(final UUID orderId) {
+    public OrderDetail get(final UUID orderId) {
         final CustomerOrder order = load(orderId);
-        return OrderViews.detail(order, warnings(order));
+        return OrderDetail.from(order, warnings(order));
     }
 
     @Transactional
-    public OrderViews.Detail approve(final UUID orderId, final String agent, final String comment) {
+    public OrderDetail approve(final UUID orderId, final String agent, final String comment) {
         final CustomerOrder order = loadForUpdate(orderId);
         final Instant now = now();
         order.approve(agent, comment, now);
@@ -77,11 +77,11 @@ public class AgentOrderService {
                 new OrderApproved(order.getId(), order.getExternalReference(), agent, now, comment, slotExpired)));
         orders.saveAndFlush(order);
         log.info("Order {} approved by {}", orderId, agent);
-        return OrderViews.detail(order, warnings(order));
+        return OrderDetail.from(order, warnings(order));
     }
 
     @Transactional
-    public OrderViews.Detail reject(final UUID orderId, final String agent, final String reason) {
+    public OrderDetail reject(final UUID orderId, final String agent, final String reason) {
         final CustomerOrder order = loadForUpdate(orderId);
         final Instant now = now();
         order.reject(agent, reason, now);
@@ -89,7 +89,7 @@ public class AgentOrderService {
                 new OrderRejected(order.getId(), order.getExternalReference(), agent, now, reason)));
         orders.saveAndFlush(order);
         log.info("Order {} rejected by {}", orderId, agent);
-        return OrderViews.detail(order, List.of());
+        return OrderDetail.from(order, List.of());
     }
 
     /** Locks the order row for the decision, so concurrent decisions queue instead of deadlocking. */
