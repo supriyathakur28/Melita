@@ -2,8 +2,7 @@ package com.melita.orders.care;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mail.MailPreparationException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -26,9 +25,9 @@ import java.util.Optional;
  * accepted.
  */
 @Service
+@Slf4j
 public class NotificationService {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
     /** Longer than the SMTP connect, read and write timeouts together. */
     private static final Duration LEASE = Duration.ofMinutes(2);
 

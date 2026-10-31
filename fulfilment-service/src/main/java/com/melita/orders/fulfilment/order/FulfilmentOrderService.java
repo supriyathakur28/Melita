@@ -6,8 +6,7 @@ import com.melita.orders.fulfilment.api.FulfilmentOrderView;
 import com.melita.orders.platform.idempotency.RequestHasher;
 import com.melita.orders.platform.pii.Masking;
 import com.melita.orders.platform.web.ApiException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -31,9 +30,9 @@ import java.util.Optional;
  * the loser re-reads and replays.
  */
 @Service
+@Slf4j
 public class FulfilmentOrderService {
 
-    private static final Logger log = LoggerFactory.getLogger(FulfilmentOrderService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final FulfilmentOrderRepository orders;

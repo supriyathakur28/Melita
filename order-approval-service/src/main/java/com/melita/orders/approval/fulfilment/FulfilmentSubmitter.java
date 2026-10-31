@@ -8,8 +8,7 @@ import com.melita.orders.approval.order.CustomerOrder;
 import com.melita.orders.approval.order.CustomerOrderRepository;
 import com.melita.orders.platform.messaging.NamedLock;
 import com.melita.orders.platform.messaging.OutboxWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -31,9 +30,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * second short transaction. Temporary failures are retried with exponential backoff and jitter, up to a limit.
  */
 @Component
+@Slf4j
 public class FulfilmentSubmitter {
 
-    private static final Logger log = LoggerFactory.getLogger(FulfilmentSubmitter.class);
     private static final String LOCK_NAME = "fulfilment-submitter";
 
     private final CustomerOrderRepository orders;

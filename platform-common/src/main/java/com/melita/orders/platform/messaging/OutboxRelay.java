@@ -1,8 +1,7 @@
 package com.melita.orders.platform.messaging;
 
 import com.melita.orders.events.OrderEvents;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -32,9 +31,9 @@ import java.util.concurrent.TimeUnit;
  *       consumers absorb because they are idempotent.</li>
  * </ul>
  */
+@Slf4j
 public class OutboxRelay {
 
-    private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
     private static final String LOCK_NAME = "outbox-relay";
     private static final int BATCH_SIZE = 100;
     private static final Duration CONFIRM_TIMEOUT = Duration.ofSeconds(5);

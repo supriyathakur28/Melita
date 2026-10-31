@@ -1,7 +1,6 @@
 package com.melita.orders.platform.messaging;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -17,9 +16,8 @@ import java.sql.SQLException;
  * If the instance dies, MySQL closes the connection and frees the lock, so another instance takes over on
  * its next tick. The lock only avoids duplicate work: correctness never depends on it.
  */
+@Slf4j
 public class NamedLock {
-
-    private static final Logger log = LoggerFactory.getLogger(NamedLock.class);
 
     private final DataSource dataSource;
 

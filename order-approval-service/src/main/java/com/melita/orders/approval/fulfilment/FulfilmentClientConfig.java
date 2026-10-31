@@ -1,9 +1,9 @@
 package com.melita.orders.approval.fulfilment;
 
+import com.melita.orders.platform.web.RequestIds;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -18,11 +18,10 @@ import org.springframework.web.client.RestClient;
 import java.net.http.HttpClient;
 
 @Configuration(proxyBeanMethods = false)
+@Slf4j
 class FulfilmentClientConfig {
 
     static final String REGISTRATION_ID = "fulfilment";
-    private static final Logger log = LoggerFactory.getLogger(FulfilmentClientConfig.class);
-
     /** Client credentials outside any HTTP request (the submitter is a scheduled job). Tokens are cached. */
     @Bean
     OAuth2AuthorizedClientManager authorizedClientManager(final ClientRegistrationRepository registrations,
@@ -46,7 +45,7 @@ class FulfilmentClientConfig {
                 .requestFactory(requestFactory)
                 .requestInterceptor(oauth2)
                 .requestInterceptor((request, body, execution) -> {
-                    final String requestId = org.slf4j.MDC.get("requestId");
+                    final String requestId = RequestIds.current();
                     if (requestId != null) {
                         request.getHeaders().set("X-Request-Id", requestId);
                     }

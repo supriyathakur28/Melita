@@ -158,7 +158,8 @@ for main and test code. The build fails if a local variable or a method or const
 `final`, or if a declaration names more than one variable.
 Classes that only hold constants or static helpers are marked with Lombok's `@UtilityClass` instead of a
 hand-written private constructor; their members keep an explicit `static` so `import static` still
-works. Lombok is compile-time only and is left out of the service jars.
+works. Loggers come from `@Slf4j`, never a hand-declared `Logger` field. Lombok is compile-time only and is
+left out of the service jars.
 
 CI (`.github/workflows/ci.yml`) runs `./mvnw verify`. A second job then brings up the full stack and runs
 the Postman collection.

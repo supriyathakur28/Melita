@@ -13,8 +13,7 @@ import com.melita.orders.approval.order.Installation;
 import com.melita.orders.platform.messaging.InboxGuard;
 import com.melita.orders.platform.messaging.OutboxWriter;
 import com.melita.orders.platform.web.RequestIds;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,9 +24,8 @@ import java.util.List;
 
 /** Stores an accepted order. One transaction: inbox row, order, and (if held) the approval-requested event. */
 @Service
+@Slf4j
 public class OrderIngestionService {
-
-    private static final Logger log = LoggerFactory.getLogger(OrderIngestionService.class);
 
     private final InboxGuard inbox;
     private final CustomerOrderRepository orders;

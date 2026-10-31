@@ -1,8 +1,7 @@
 package com.melita.orders.approval.policy;
 
 import com.melita.orders.events.OrderAccepted;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.core.env.Environment;
@@ -22,9 +21,8 @@ import java.util.Set;
  */
 @Component
 @RefreshScope
+@Slf4j
 public class ApprovalPolicy {
-
-    private static final Logger log = LoggerFactory.getLogger(ApprovalPolicy.class);
 
     public record Rules(Set<String> requiredPackages, Set<String> requiredProducts) {
         public Rules {

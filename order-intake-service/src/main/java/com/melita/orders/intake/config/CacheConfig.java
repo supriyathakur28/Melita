@@ -1,8 +1,7 @@
 package com.melita.orders.intake.config;
 
 import com.melita.orders.intake.catalogue.Catalogue;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.Cache;
@@ -26,11 +25,10 @@ import java.time.Duration;
  */
 @Configuration(proxyBeanMethods = false)
 @EnableCaching
+@Slf4j
 public class CacheConfig implements CachingConfigurer {
 
     public static final String CATALOGUE = "catalogue";
-
-    private static final Logger log = LoggerFactory.getLogger(CacheConfig.class);
 
     /**
      * One typed serializer for the one cache: the JSON never names Java classes, so no polymorphic

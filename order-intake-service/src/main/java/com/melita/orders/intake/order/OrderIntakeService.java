@@ -11,8 +11,7 @@ import com.melita.orders.platform.messaging.OutboxWriter;
 import com.melita.orders.platform.web.ApiException;
 import com.melita.orders.platform.web.FieldViolation;
 import com.melita.orders.platform.web.RequestIds;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,9 +34,9 @@ import java.util.UUID;
  * remote call happens inside the transaction; validation runs before it.
  */
 @Service
+@Slf4j
 public class OrderIntakeService {
 
-    private static final Logger log = LoggerFactory.getLogger(OrderIntakeService.class);
     private static final Duration REPLAY_WINDOW = Duration.ofDays(30);
 
     private final CatalogueService catalogueService;

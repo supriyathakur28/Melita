@@ -11,8 +11,7 @@ import com.melita.orders.approval.order.OrderStatus;
 import com.melita.orders.platform.messaging.OutboxWriter;
 import com.melita.orders.platform.web.ApiException;
 import com.melita.orders.platform.web.RequestIds;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -33,11 +32,10 @@ import java.util.UUID;
  */
 @Service
 @PreAuthorize("hasRole('AGENT')")
+@Slf4j
 public class AgentOrderService {
 
     static final String SLOT_EXPIRED = "PREFERRED_SLOT_EXPIRED";
-    private static final Logger log = LoggerFactory.getLogger(AgentOrderService.class);
-
     private final CustomerOrderRepository orders;
     private final OutboxWriter outbox;
     private final Clock clock;

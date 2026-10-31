@@ -1,8 +1,7 @@
 package com.melita.orders.care;
 
 import com.melita.orders.platform.messaging.ListenerFailureCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -12,9 +11,8 @@ import org.springframework.stereotype.Component;
  * truth: an order awaiting approval is always visible in the Approval API, whether or not the email arrived.
  */
 @Component
+@Slf4j
 class OrderEventsListener implements ListenerFailureCallback {
-
-    private static final Logger log = LoggerFactory.getLogger(OrderEventsListener.class);
 
     private final EmailComposer composer;
     private final NotificationService notifications;

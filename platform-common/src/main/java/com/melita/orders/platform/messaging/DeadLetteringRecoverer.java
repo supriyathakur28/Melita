@@ -1,7 +1,6 @@
 package com.melita.orders.platform.messaging;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.retry.MessageRecoverer;
@@ -14,9 +13,8 @@ import java.util.List;
  * Logs only the message ID and type. Spring's {@code RejectAndDontRequeueRecoverer} is not used because it
  * logs the whole message, and an {@code order.accepted} body contains personal data.
  */
+@Slf4j
 class DeadLetteringRecoverer implements MessageRecoverer {
-
-    private static final Logger log = LoggerFactory.getLogger(DeadLetteringRecoverer.class);
 
     private final List<ListenerFailureCallback> callbacks;
 
