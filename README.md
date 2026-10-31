@@ -305,30 +305,9 @@ docs/                      architecture and event contract
 This project was built with Claude Code, Anthropic's AI coding assistant, as a pair programmer. That's how
 I work day to day.
 
-- **Design first.**
-  - I worked through the brief and the architecture with the assistant one question at a time. The
-    choices were mine: RabbitMQ, Keycloak, the service split, whole-order approval, the git-backed Config
-    Server, single-instance scheduled jobs via a MySQL named lock, idempotency in MySQL rather than Redis,
-    and encrypting the ID number.
-  - The design document was reviewed section by section, and several parts were changed or removed in
-    that review.
-- **Independent review.** Before coding, I had a separate AI review look for over-engineering. I accepted
-  most of its simplifications and rejected some (for example, I kept a separate email service and its
-  notification log).
-- **My corrections during code review.** I rejected a Fulfilment stub that had a failure-injection header
-  in its API and kept idempotency in memory: test hooks belong in test fakes, not in a service's API, and
-  idempotency must survive a restart. Following the brief's wording, I restructured the services into
-  intake, order-approval, fulfilment and care, with Fulfilment as a real service with its own database.
-  I also asked for:
-  - a required `Idempotency-Key` header validated by a constraint, instead of an optional header checked by
-    hand;
-  - `final` locals and parameters, enforced in the build;
-  - business rules and loops written as streams;
-  - an annotation (`@CurrentAgent`) in place of a static helper class.
-- **Implementation.** The assistant wrote most of the code, tests and documentation from the agreed
-  design, in small commits, each with its tests. Several defects were caught by those tests before they
-  were committed, for example:
-  - timestamp precision breaking idempotent replays;
-  - Config Server checking out branches in its source repository.
-- **Review.** I reviewed the code, the tests and the documents, and I am responsible for every decision in
-  them.
+- **Design.** I worked through the brief and the architecture with the assistant. The design choices were
+  mine, and the design document was reviewed section by section before any code was written.
+- **Implementation.** The assistant wrote most of the code, tests and documentation from the agreed design,
+  in small commits, each with its tests.
+- **Review.** I reviewed every step: the design, each change to the code and tests, and the documents. I
+  am responsible for every decision in them.
