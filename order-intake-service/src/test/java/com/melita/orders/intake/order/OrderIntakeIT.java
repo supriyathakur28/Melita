@@ -118,8 +118,13 @@ class OrderIntakeIT extends IntakeIntegrationTest {
         assertThat(result.getResponse().getStatus()).isEqualTo(201);
         final String orderId = jsonMapper.readTree(result.getResponse().getContentAsString()).get("orderId").asString();
 
-        final Message message = rabbitTemplate.receive(CAPTURE_QUEUE, 10_000);
-        assertThat(message).isNotNull();
+        // Earlier tests' events can still arrive after the queue was drained, so pick this order's event.
+        final Message message = Stream.generate(() -> rabbitTemplate.receive(CAPTURE_QUEUE, 500))
+                .limit(20)
+                .filter(m -> m != null && new String(m.getBody(), StandardCharsets.UTF_8).contains(orderId))
+                .findFirst()
+                .orElse(null);
+        assertThat(message).as("order.accepted for %s", orderId).isNotNull();
         final EventEnvelope<OrderAccepted> event = jsonMapper.readValue(
                 new String(message.getBody(), StandardCharsets.UTF_8), new TypeReference<>() {
                 });

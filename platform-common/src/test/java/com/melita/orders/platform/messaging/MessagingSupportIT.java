@@ -29,6 +29,7 @@ import java.sql.Connection;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -77,8 +78,9 @@ class MessagingSupportIT {
         }
     }
 
+    /** No ordering is promised (docs/events.md): with publisher confirms, a batch may go out on several channels. */
     @Test
-    void relayPublishesInCommitOrderMarksRowsAndClearsPayload() {
+    void relayPublishesEveryRowMarksItAndClearsPayload() {
         final List<EventEnvelope<Map<String, String>>> events = new ArrayList<>();
         for (int i = 1; i <= 3; i++) {
             events.add(EventEnvelope.of(OrderEvents.ORDER_ACCEPTED, "req-" + i, Instant.now(), Map.of("n", "" + i)));
@@ -87,9 +89,15 @@ class MessagingSupportIT {
 
         assertThat(outboxRelay.publishPending()).isEqualTo(3);
 
-        for (final EventEnvelope<Map<String, String>> event : events) {
+        final Map<String, Message> receivedById = new HashMap<>();
+        for (int i = 0; i < events.size(); i++) {
             final Message received = rabbitTemplate.receive(MessagingTestApplication.RELAY_QUEUE, 5_000);
             assertThat(received).isNotNull();
+            receivedById.put(received.getMessageProperties().getMessageId(), received);
+        }
+        for (final EventEnvelope<Map<String, String>> event : events) {
+            final Message received = receivedById.get(event.eventId().toString());
+            assertThat(received).as("event %s", event.eventId()).isNotNull();
             final MessageProperties properties = received.getMessageProperties();
             assertThat(properties.getMessageId()).isEqualTo(event.eventId().toString());
             assertThat(properties.getType()).isEqualTo(OrderEvents.ORDER_ACCEPTED);
