@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OrderRulesTest {
 
-    /** Wednesday 4 Nov 2026, 10:00 in Malta (UTC+1 in winter). */
+    /** Wednesday 4 Nov 2026, 09:00 UTC. */
     private static final Instant WEDNESDAY_MORNING = Instant.parse("2026-11-04T09:00:00Z");
 
     private static final Catalogue CATALOGUE = new Catalogue(List.of(
@@ -35,7 +36,7 @@ class OrderRulesTest {
                     new PackageEntry("MOBILE_POSTPAID", "Mobile post-paid", true)))));
 
     private final InstallationProperties properties = new InstallationProperties(
-            2, 60, Set.of(DayOfWeek.SUNDAY), Set.of(LocalDate.of(2026, 12, 8)), null);
+            2, 60, Set.of(DayOfWeek.SUNDAY), Set.of(LocalDate.of(2026, 12, 8)));
 
     private List<FieldViolation> check(final PlaceOrderRequest request, final Instant now) {
         return new OrderRules(properties, Clock.fixed(now, ZoneOffset.UTC)).check(request, CATALOGUE);
@@ -91,8 +92,8 @@ class OrderRulesTest {
     }
 
     @Test
-    void customerMustBeAtLeast18InMaltaToday() {
-        // 18th birthday is 5 Nov 2026; at 23:30 UTC on 4 Nov it is already 5 Nov in Malta.
+    void customerMustBeAtLeast18() {
+        // 18th birthday is 5 Nov 2026: underage the day before, accepted on the day.
         final var customer = TestOrders.customer();
         final var minor = new PlaceOrderRequest.CustomerRequest(customer.firstName(), customer.lastName(),
                 LocalDate.of(2008, 11, 5), customer.email(), customer.mobileNumber(), customer.identityDocument(),
@@ -100,8 +101,8 @@ class OrderRulesTest {
         final var request = new PlaceOrderRequest("ERP-1", minor, null,
                 List.of(new ItemRequest(Product.MOBILE, "MOBILE_PREPAID")));
 
-        assertThat(codes(check(request, Instant.parse("2026-11-04T22:30:00Z")))).containsExactly("CUSTOMER_UNDERAGE");
-        assertThat(check(request, Instant.parse("2026-11-04T23:30:00Z"))).isEmpty();
+        assertThat(codes(check(request, WEDNESDAY_MORNING))).containsExactly("CUSTOMER_UNDERAGE");
+        assertThat(check(request, WEDNESDAY_MORNING.plus(Duration.ofDays(1)))).isEmpty();
     }
 
     @Test
@@ -116,20 +117,10 @@ class OrderRulesTest {
 
     @Test
     void zeroLeadTimeAllowsToday() {
-        final var sameDay = new InstallationProperties(0, 60, Set.of(DayOfWeek.SUNDAY), Set.of(), null);
+        final var sameDay = new InstallationProperties(0, 60, Set.of(DayOfWeek.SUNDAY), Set.of());
         final var rules = new OrderRules(sameDay, Clock.fixed(WEDNESDAY_MORNING, ZoneOffset.UTC));
 
         assertThat(rules.check(TestOrders.internetAndMobile("A", LocalDate.of(2026, 11, 4)), CATALOGUE)).isEmpty();
-    }
-
-    @Test
-    void todayIsTakenInMaltaNotUtc() {
-        // 23:30 UTC on Wednesday 4 Nov is already Thursday 5 Nov in Malta: earliest date moves from Fri to Sat.
-        final Instant lateWednesdayUtc = Instant.parse("2026-11-04T23:30:00Z");
-
-        assertThat(codes(check(TestOrders.internetAndMobile("A", LocalDate.of(2026, 11, 6)), lateWednesdayUtc)))
-                .containsExactly("INSTALLATION_DATE_INVALID");
-        assertThat(check(TestOrders.internetAndMobile("A", LocalDate.of(2026, 11, 7)), lateWednesdayUtc)).isEmpty();
     }
 
     @Test

@@ -148,7 +148,7 @@ Docker must be running: the integration tests start MySQL, RabbitMQ, Redis and M
 
 | Level | What it proves |
 |---|---|
-| Unit | Validation rules (dates computed in Malta time from a fixed clock, working days, holidays), every state-machine transition, approval policy, request hashing, AES-GCM encryption, email composition |
+| Unit | Validation rules (UTC dates from a fixed clock, working days, holidays), every state-machine transition, approval policy, request hashing, AES-GCM encryption, email composition |
 | Web slice (`@WebMvcTest`) | Error responses and the security matrix: 401/403 per endpoint, scope and role, 404 for another partner's order |
 | Integration (Testcontainers) | Order → outbox → RabbitMQ; **parallel requests with one Idempotency-Key create one order**; replay/422/409; **duplicate delivery**; **two agents deciding at once (one 200, one 409)**; poison messages → DLQ; Fulfilment retry with the same key, permanent failure, retry exhaustion (against a scripted test fake); fulfilment-service durable idempotency and both 409 cases; encryption at rest; policy refresh; Redis down → catalogue from MySQL; SMTP down → retried, dead-lettered, marked FAILED |
 | Postman + Newman | The running stack end to end with real Keycloak tokens |

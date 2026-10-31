@@ -7,7 +7,6 @@ import org.springframework.validation.annotation.Validated;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Set;
 
 /**
@@ -20,15 +19,13 @@ public record InstallationProperties(
         @Min(0) @Max(30) Integer minLeadWorkingDays,
         @Min(1) @Max(365) Integer maxHorizonDays,
         Set<DayOfWeek> excludedDays,
-        Set<LocalDate> publicHolidays,
-        ZoneId zone) {
+        Set<LocalDate> publicHolidays) {
 
     public InstallationProperties {
         minLeadWorkingDays = minLeadWorkingDays == null ? 2 : minLeadWorkingDays;
         maxHorizonDays = maxHorizonDays == null ? 60 : maxHorizonDays;
         excludedDays = excludedDays == null ? Set.of(DayOfWeek.SUNDAY) : Set.copyOf(excludedDays);
         publicHolidays = publicHolidays == null ? Set.of() : Set.copyOf(publicHolidays);
-        zone = zone == null ? ZoneId.of("Europe/Malta") : zone;
     }
 
     public boolean isWorkingDay(final LocalDate date) {

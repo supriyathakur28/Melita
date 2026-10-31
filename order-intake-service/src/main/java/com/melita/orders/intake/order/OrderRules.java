@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 
 /**
  * Business rules that need reference data or the calendar (422). Each rule returns its own violations and
- * {@link #check} concatenates them, so a partner can fix everything in one round-trip. "Today" is the date
- * in Malta, from the injected clock.
+ * {@link #check} concatenates them, so a partner can fix everything in one round-trip. "Today" is the UTC
+ * date from the injected clock.
  */
 @Component
 public class OrderRules {
@@ -34,7 +34,7 @@ public class OrderRules {
     }
 
     public List<FieldViolation> check(final PlaceOrderRequest request, final Catalogue catalogue) {
-        final LocalDate today = LocalDate.now(clock.withZone(installation.zone()));
+        final LocalDate today = LocalDate.now(clock);
         final boolean needsInstallation = needsInstallation(request, catalogue);
         return Stream.of(
                         itemViolations(request, catalogue),

@@ -4,7 +4,6 @@ import com.melita.orders.events.EventEnvelope;
 import com.melita.orders.events.OrderEvents;
 import com.melita.orders.events.OrderFulfilmentFailed;
 import com.melita.orders.events.OrderSubmitted;
-import com.melita.orders.approval.config.OrdersProperties;
 import com.melita.orders.approval.order.CustomerOrder;
 import com.melita.orders.approval.order.CustomerOrderRepository;
 import com.melita.orders.platform.messaging.NamedLock;
@@ -42,21 +41,19 @@ public class FulfilmentSubmitter {
     private final OutboxWriter outbox;
     private final NamedLock namedLock;
     private final FulfilmentProperties properties;
-    private final OrdersProperties ordersProperties;
     private final TransactionTemplate transaction;
     private final TransactionTemplate readOnly;
     private final Clock clock;
 
     public FulfilmentSubmitter(final CustomerOrderRepository orders, final FulfilmentClient client,
                                final OutboxWriter outbox, final NamedLock namedLock,
-                               final FulfilmentProperties properties, final OrdersProperties ordersProperties,
+                               final FulfilmentProperties properties,
                                final PlatformTransactionManager transactionManager, final Clock clock) {
         this.orders = orders;
         this.client = client;
         this.outbox = outbox;
         this.namedLock = namedLock;
         this.properties = properties;
-        this.ordersProperties = ordersProperties;
         this.transaction = new TransactionTemplate(transactionManager);
         this.readOnly = new TransactionTemplate(transactionManager);
         this.readOnly.setReadOnly(true);
@@ -156,7 +153,7 @@ public class FulfilmentSubmitter {
         FulfilmentRequest.Installation installation = null;
         if (order.getInstallation() != null) {
             final var i = order.getInstallation();
-            final LocalDate today = LocalDate.now(clock.withZone(ordersProperties.zone()));
+            final LocalDate today = LocalDate.now(clock);
             installation = new FulfilmentRequest.Installation(address(i.address()), i.preferredDate(), i.timeSlot(),
                     order.preferredSlotExpired(today));
         }

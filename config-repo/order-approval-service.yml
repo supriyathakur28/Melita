@@ -49,8 +49,5 @@ fulfilment:
   max-retry-delay: 5m
   circuit-open-duration: 30s
 
-orders:
-  zone: Europe/Malta
-
 pii:
   encryption-key: ${PII_ENCRYPTION_KEY}

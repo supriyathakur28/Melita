@@ -4,7 +4,6 @@ import com.melita.orders.events.EventEnvelope;
 import com.melita.orders.events.OrderApproved;
 import com.melita.orders.events.OrderEvents;
 import com.melita.orders.events.OrderRejected;
-import com.melita.orders.approval.config.OrdersProperties;
 import com.melita.orders.approval.order.CustomerOrder;
 import com.melita.orders.approval.order.CustomerOrderRepository;
 import com.melita.orders.approval.order.CustomerOrderRepository.OrderSummaryView;
@@ -41,14 +40,11 @@ public class AgentOrderService {
 
     private final CustomerOrderRepository orders;
     private final OutboxWriter outbox;
-    private final OrdersProperties properties;
     private final Clock clock;
 
-    public AgentOrderService(final CustomerOrderRepository orders, final OutboxWriter outbox,
-                             final OrdersProperties properties, final Clock clock) {
+    public AgentOrderService(final CustomerOrderRepository orders, final OutboxWriter outbox, final Clock clock) {
         this.orders = orders;
         this.outbox = outbox;
-        this.properties = properties;
         this.clock = clock;
     }
 
@@ -109,7 +105,7 @@ public class AgentOrderService {
 
     private boolean slotExpired(final CustomerOrder order) {
         return order.getInstallation() != null
-                && order.getInstallation().isExpiredOn(LocalDate.now(clock.withZone(properties.zone())));
+                && order.getInstallation().isExpiredOn(LocalDate.now(clock));
     }
 
     private Instant now() {

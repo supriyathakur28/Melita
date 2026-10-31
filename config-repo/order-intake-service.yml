@@ -19,7 +19,6 @@ installation:
   min-lead-working-days: 2
   max-horizon-days: 60
   excluded-days: [SUNDAY]
-  zone: Europe/Malta
   # Maltese public holidays; installations are not booked on these days.
   public-holidays:
     - 2026-01-01

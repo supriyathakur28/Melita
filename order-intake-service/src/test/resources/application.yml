@@ -35,4 +35,3 @@ installation:
   min-lead-working-days: 2
   max-horizon-days: 60
   excluded-days: [SUNDAY]
-  zone: Europe/Malta

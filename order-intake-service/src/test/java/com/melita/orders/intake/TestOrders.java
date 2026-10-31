@@ -12,7 +12,7 @@ import com.melita.orders.intake.order.api.PlaceOrderRequest.TimeSlot;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
@@ -48,7 +48,7 @@ public final class TestOrders {
 
     /** A Monday about two weeks out: always valid for the default lead time and horizon. */
     public static LocalDate validInstallationDate() {
-        return LocalDate.now(ZoneId.of("Europe/Malta"))
+        return LocalDate.now(ZoneOffset.UTC)
                 .plusDays(14)
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
     }
